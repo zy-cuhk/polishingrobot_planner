@@ -6,10 +6,15 @@ the output is:
 (1) mobile platform positions list
 (2) two points position representing the covered rectangular area
 
-the visualization of these mobile platform axis frame: mobile 
+2. step 2: viewpoint planning using c++
+(1) obtian pcd file 
+(2) read pcd file
 
 
-2. step 2: 
+3. publish planned robot state, including mobile platform position and manipulator joints list
+the refrence code is: 
+
+
 
 
 

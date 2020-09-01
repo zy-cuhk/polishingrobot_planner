@@ -113,5 +113,7 @@ int main( int argc, char** argv )
  
     r.sleep();
  
-    f += 0.04;
+    //f += 0.04;
   }
+
+}
