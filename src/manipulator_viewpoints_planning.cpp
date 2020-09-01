@@ -39,8 +39,13 @@ int main(int argc,char**argv)
 
     // build up the simplified wall model in pcd file format 
     pcl::PointCloud<pcl::PointXYZ> new_cloud;
+    
+    float cell_width= 0.8246;
+    float wall2mobileplatformbase_distance=1.0;
+    float wall_height =2.70;
+
     new_cloud.width=32;
-    new_cloud.height=72;
+    new_cloud.height=76;
     new_cloud.is_dense=false;
     new_cloud.points.resize(new_cloud.width*new_cloud.height);
 
@@ -50,8 +55,8 @@ int main(int argc,char**argv)
         ii=int(i/new_cloud.height);
         iii=int(i%new_cloud.height);
 
-        new_cloud.points[i].x=1.0;
-        new_cloud.points[i].y=(-0.560027)+(ii*0.03489);
+        new_cloud.points[i].x=wall2mobileplatformbase_distance;
+        new_cloud.points[i].y=(-cell_width/2)+(ii*0.03489);
         new_cloud.points[i].z=(0.0)+(iii*0.03574);
     }
     // write pcd 
