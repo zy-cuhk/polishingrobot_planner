@@ -1,10 +1,12 @@
+%% this matlab file is to generate mobile platform positions list and coverage area represented by two points 
 
-%function [renovation_cells_clustering_waypaths,renovation_cells_waypioints_onwaypath,renovation_cells_manipulatorbase_positions, manipulator_endeffector_positions_onpath]=renovation_cells_generation(room_plane_edge_cell,renovation_plane_edge_cell,renovation_effective_waypaths,renovation_plane_norm_vector,manipulatorbase_plane_edge_cell,length_interval,width_interval,path_distance)
 
-path_interval=painting_path_interval;
-length_interval=cell_length;
-width_interval=cell_width;
-path_distance=path_interval;
+%% generating renovation cells containing waypaths 
+wall2manipulatorbase_distance=0.8;
+wall_height=2.7;
+cell_width=coverage_width_computation(wall2manipulatorbase_distance,wall_height);
+cell_height=0.8;
+path_distance=painting_path_interval;
 
 manipulatorbase_plane_edge_cell;
 renovation_plane_norm_vector;
@@ -74,9 +76,9 @@ end
 for i=1:1:size(intersect_plane_dmin_max,2)
     dmin=intersect_plane_dmin_max{i}(1,1);
     dmax=intersect_plane_dmin_max{i}(1,2);
-    plane_num=floor(abs(dmax-dmin)/length_interval);
+    plane_num=floor(abs(dmax-dmin)/cell_width);
     for j=1:1:plane_num 
-        intersect_plane_d{i}(1,j)=dmin+j*length_interval;
+        intersect_plane_d{i}(1,j)=dmin+j*cell_width;
     end
 end
 
@@ -90,9 +92,9 @@ end
 for i=1:1:size(intersect_plane2_dmin_max,2)
     dmin_intersect_plane2=intersect_plane2_dmin_max{i}(1,1);
     dmax_intersect_plane2=intersect_plane2_dmin_max{i}(1,2);
-    plane_num=floor(abs(dmax_intersect_plane2-dmin_intersect_plane2)/width_interval);
+    plane_num=floor(abs(dmax_intersect_plane2-dmin_intersect_plane2)/cell_height);
     for j=1:1:plane_num 
-        intersect_plane2_d{i}(1,j)=dmin_intersect_plane2+j*width_interval;
+        intersect_plane2_d{i}(1,j)=dmin_intersect_plane2+j*cell_height;
     end
 end
 
@@ -245,9 +247,15 @@ for i=1:1:size(renovationcells_horizontalposition,2)
         y0=renovationcells_horizontalposition{i}(2*j-1,2);
         x1=renovationcells_horizontalposition{i}(2*j,1);
         y1=renovationcells_horizontalposition{i}(2*j,2);
+        
         distance=sqrt((x0-x1)^2+(y0-y1)^2);
-        renovationcells_horizontal_midposition{i}(j,1)=(renovationcells_horizontalposition{i}(2*j-1,1)+renovationcells_horizontalposition{i}(2*j,1))/2;
-        renovationcells_horizontal_midposition{i}(j,2)=(renovationcells_horizontalposition{i}(2*j-1,2)+renovationcells_horizontalposition{i}(2*j,2))/2;
+        if distance>0.7
+            renovationcells_horizontal_midposition{i}(j,1)=(renovationcells_horizontalposition{i}(2*j-1,1)+renovationcells_horizontalposition{i}(2*j,1))/2;
+            renovationcells_horizontal_midposition{i}(j,2)=(renovationcells_horizontalposition{i}(2*j-1,2)+renovationcells_horizontalposition{i}(2*j,2))/2;     
+        else
+            renovationcells_horizontal_midposition{i}(j,1)=renovationcells_horizontalposition{i}(2*j-1,1) +0.4*(x1-x0)/distance;
+            renovationcells_horizontal_midposition{i}(j,2)=renovationcells_horizontalposition{i}(2*j-1,2) +0.4*(y1-y0)/distance;
+        end
     end
 end
 for i=1:1:size(renovationcells_horizontal_midposition,2)
@@ -357,23 +365,61 @@ for i=1:1:size(renovation_cells_manipulatorbase_positions,2)
     end
 end
 
-save('scan_data2.mat','manipulator_endeffector_positions_onpath','renovation_cells_manipulatorbase_positions','renovation_cells_waypioints_onwaypath');
-renovation_cells_waypath_visualization(renovation_cells_waypioints_onwaypath,renovation_cells_manipulatorbase_positions,renovation_plane_edge_cell,room_plane_edge_cell,manipulatorbase_plane_edge_cell);
+% renovation_cells_waypath_visualization(renovation_cells_waypioints_onwaypath,renovation_cells_manipulatorbase_positions,renovation_plane_edge_cell,room_plane_edge_cell,manipulatorbase_plane_edge_cell);
 
-positions_num=0;
 for i=1:1:size(renovation_cells_manipulatorbase_positions,2)
     for j=1:1:size(renovation_cells_manipulatorbase_positions{i},2)
-        for k=1:1:size(renovation_cells_manipulatorbase_positions{i}{j},2)
-            position=renovation_cells_manipulatorbase_positions{i}{j}{k}(1,1:3);
-            fprintf('the position is: %6.4f, %6.4f, %6.4f\n',position(1),position(2),position(3));
-            positions_num=positions_num+1;
-        end
+        parameterx=0.2;
+        parametery=0.0;
+        theta_z=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,6);
+        deltax=parameterx*cos(theta_z)-parametery*sin(theta_z);
+        deltay=parameterx*sin(theta_z)+parametery*cos(theta_z);
+        
+        renovation_cells_mobileplatform_base_positions{i}{j}(1)=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,1)-deltax;
+        renovation_cells_mobileplatform_base_positions{i}{j}(2)=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,2)-deltay;
+        renovation_cells_mobileplatform_base_positions{i}{j}(3)=0;
+        renovation_cells_mobileplatform_base_positions{i}{j}(4)=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,4);
+        renovation_cells_mobileplatform_base_positions{i}{j}(5)=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,5);
+        renovation_cells_mobileplatform_base_positions{i}{j}(6)=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,6);
     end
 end
-fprintf('the position number is: %6.4f\n',positions_num);
+
+renovation_mobileplatform_visualization(renovation_cells_mobileplatform_base_positions,room_plane_edge_cell,renovation_cells_waypioints_onwaypath);
+save('scan_data2.mat','renovation_cells_mobileplatform_base_positions','wall_height','cell_width');
 
 
-%  end
+
+
+% for i=1:1:size(renovation_cells_mobileplatform_base_positions,2)
+%     for j=1:1:size(renovation_cells_mobileplatform_base_positions{i},2)
+%         parameterx=0.2;
+%         parametery=0.0;
+%         theta_z=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,6);
+%         deltax=parameterx*cos(theta_z)-parametery*sin(theta_z);
+%         deltay=parameterx*sin(theta_z)+parametery*cos(theta_z);
+%         
+%         renovation_cells_mobileplatform_base_positions1{i}{j}(1)=renovation_cells_mobileplatform_base_positions{i}{j}(1)-deltax;
+%         renovation_cells_mobileplatform_base_positions1{i}{j}(2)=renovation_cells_mobileplatform_base_positions{i}{j}(2)-deltay;
+%         renovation_cells_mobileplatform_base_positions1{i}{j}(3)=0;
+%         renovation_cells_mobileplatform_base_positions1{i}{j}(4)=0;        
+%         renovation_cells_mobileplatform_base_positions1{i}{j}(5)=0;
+%         renovation_cells_mobileplatform_base_positions1{i}{j}(5)=theta_z;
+%     end
+% end
+
+% positions_num=0;
+% for i=1:1:size(renovation_cells_manipulatorbase_positions,2)
+%     for j=1:1:size(renovation_cells_manipulatorbase_positions{i},2)
+%         for k=1:1:size(renovation_cells_manipulatorbase_positions{i}{j},2)
+%             position=renovation_cells_manipulatorbase_positions{i}{j}{k}(1,1:3);
+%             fprintf('the position is: %6.4f, %6.4f, %6.4f\n',position(1),position(2),position(3));
+%             positions_num=positions_num+1;
+%         end
+%     end
+% end
+% fprintf('the position number is: %6.4f\n',positions_num);
+
+
 
 
 
