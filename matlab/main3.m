@@ -3,6 +3,7 @@
 
 %% generating renovation cells containing waypaths 
 wall2manipulatorbase_distance=0.8;
+wall2mobileplatformbase_distance=1.0;
 wall_height=2.7;
 cell_width=coverage_width_computation(wall2manipulatorbase_distance,wall_height);
 cell_height=0.8;
@@ -369,7 +370,7 @@ end
 
 for i=1:1:size(renovation_cells_manipulatorbase_positions,2)
     for j=1:1:size(renovation_cells_manipulatorbase_positions{i},2)
-        parameterx=0.2;
+        parameterx=wall2mobileplatformbase_distance-wall2manipulatorbase_distance;
         parametery=0.0;
         theta_z=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,6);
         deltax=parameterx*cos(theta_z)-parametery*sin(theta_z);
@@ -385,27 +386,9 @@ for i=1:1:size(renovation_cells_manipulatorbase_positions,2)
 end
 
 renovation_mobileplatform_visualization(renovation_cells_mobileplatform_base_positions,room_plane_edge_cell,renovation_cells_waypioints_onwaypath);
-save('scan_data2.mat','renovation_cells_mobileplatform_base_positions','wall_height','cell_width');
+save('scan_data2.mat','renovation_cells_mobileplatform_base_positions','wall2mobileplatformbase_distance','wall_height','cell_width');
 
 
-
-
-% for i=1:1:size(renovation_cells_mobileplatform_base_positions,2)
-%     for j=1:1:size(renovation_cells_mobileplatform_base_positions{i},2)
-%         parameterx=0.2;
-%         parametery=0.0;
-%         theta_z=renovation_cells_manipulatorbase_positions{i}{j}{1}(1,6);
-%         deltax=parameterx*cos(theta_z)-parametery*sin(theta_z);
-%         deltay=parameterx*sin(theta_z)+parametery*cos(theta_z);
-%         
-%         renovation_cells_mobileplatform_base_positions1{i}{j}(1)=renovation_cells_mobileplatform_base_positions{i}{j}(1)-deltax;
-%         renovation_cells_mobileplatform_base_positions1{i}{j}(2)=renovation_cells_mobileplatform_base_positions{i}{j}(2)-deltay;
-%         renovation_cells_mobileplatform_base_positions1{i}{j}(3)=0;
-%         renovation_cells_mobileplatform_base_positions1{i}{j}(4)=0;        
-%         renovation_cells_mobileplatform_base_positions1{i}{j}(5)=0;
-%         renovation_cells_mobileplatform_base_positions1{i}{j}(5)=theta_z;
-%     end
-% end
 
 % positions_num=0;
 % for i=1:1:size(renovation_cells_manipulatorbase_positions,2)
