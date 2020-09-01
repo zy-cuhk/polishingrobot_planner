@@ -6,6 +6,8 @@ the output is:
 (1) mobile platform positions list
 (2) two points position representing the covered rectangular area
 
+the visualization of these mobile platform axis frame: mobile 
+
 
 2. step 2: 
 
