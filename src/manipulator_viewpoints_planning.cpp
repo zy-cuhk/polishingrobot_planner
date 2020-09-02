@@ -105,6 +105,20 @@ int main(int argc,char**argv)
     }
     tree.insertPointCloud(scan, sensorOrigin);
 
+    // create FOV Of camera
+    octomap::point3d Point3dwall(1.05,0.0,0.0);    
+    octomap::Pointcloud pointwall;     
+    // for(int ii=1;ii<321;ii++){
+    for(int ii=1;ii<401;ii++){
+        for(int iii=1;iii<241;iii++){
+            Point3dwall.y()= (-0.690027)+(ii*0.003489);
+            // Point3dwall.y()= (-0.560027)+(ii*0.003489);
+            Point3dwall.z()= (-0.430668)+(iii*0.003574);
+            pointwall.push_back(Point3dwall);
+        }
+    }
+
+
     octomapMsg.header.frame_id = "map";
     octomap_msgs::binaryMapToMsg(cloudAndUnknown, octomapMsg);
     while (ros::ok())
@@ -114,6 +128,9 @@ int main(int argc,char**argv)
         loop_rate.sleep();  
         //ros::spinOnce();  
     }
+
+
+
 
     return 0;
 
