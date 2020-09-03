@@ -13,6 +13,8 @@
 #include <vector>
 #include <fstream>
 #include <assert.h>
+#include "../include/aubo_kinematics.h"
+
 
 #include <ros/ros.h>  
 #include "ros/console.h"
@@ -46,7 +48,7 @@ int main(int argc,char**argv)
     float wall2mobileplatformbase_distance=1.0;
     float wall_height =2.70;
 
-    new_cloud.width=32;
+    new_cloud.width=24;
     new_cloud.height=76;
     new_cloud.is_dense=false;
     new_cloud.points.resize(new_cloud.width*new_cloud.height);
@@ -92,10 +94,10 @@ int main(int argc,char**argv)
 
     // create octree from point cloud 
     float cloudCentroid[3]={0,0,0};
-    octomap::OcTree cloudAndUnknown(0.05);
+    octomap::OcTree cloudAndUnknown(0.01);
     for (size_t i = 0; i < cloud->points.size (); ++i){ 
         octomap::OcTreeNode * cloudNode=cloudAndUnknown.updateNode(cloud->points[i].x+cloudCentroid[0],cloud->points[i].y+cloudCentroid[1],cloud->points[i].z+cloudCentroid[2],true);
-        cloudNode->setValue(13);
+        cloudNode->setValue(1);
     }
 
     //visualize pcd document octree
@@ -107,18 +109,6 @@ int main(int argc,char**argv)
     }
     tree.insertPointCloud(scan, sensorOrigin);
 
-    // create FOV Of camera
-    octomap::point3d Point3dwall(1.05,0.0,0.0);    
-    octomap::Pointcloud pointwall;     
-    // for(int ii=1;ii<321;ii++){
-    for(int ii=1;ii<401;ii++){
-        for(int iii=1;iii<241;iii++){
-            Point3dwall.y()= (-0.690027)+(ii*0.003489);
-            // Point3dwall.y()= (-0.560027)+(ii*0.003489);
-            Point3dwall.z()= (-0.430668)+(iii*0.003574);
-            pointwall.push_back(Point3dwall);
-        }
-    }
 
     // create FOV Of camera
     octomap::point3d Point3dwall(0.0,0.0,1.20);    
@@ -133,10 +123,10 @@ int main(int argc,char**argv)
     }
 
     // sample viewpoint positions 
-    int candidate_viewpoints_num = 1
-    int cartesian_freedom = 6
-    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom]
-    for (i=0; i<candidate_viewpoints_num; i++){
+    int candidate_viewpoints_num = 1;
+    int cartesian_freedom = 6;
+    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom];
+    for (int i=0; i<candidate_viewpoints_num; i++){
         candidate_viewpoint_positions[i][0]=0.0;
         candidate_viewpoint_positions[i][1]=0.0;
         candidate_viewpoint_positions[i][2]=0.6;
@@ -144,9 +134,11 @@ int main(int argc,char**argv)
         candidate_viewpoint_positions[i][4]=M_PI/2; 
         candidate_viewpoint_positions[i][0]=0.0;
     }
-    float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0}
+    float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
+    int candidateviewpoints_coveragenode_num[candidate_viewpoints_num];
+
     // obtain the occupied octomap nodes for candidate viewpoints
-    for (i=0; i<candidate_viewpoints_num; i++){
+    for (int i=0; i<candidate_viewpoints_num; i++){
 
         // step 1: obtain the pose of camera viewpoint 
         octomap::Pointcloud variablePointwall;     
@@ -161,7 +153,7 @@ int main(int argc,char**argv)
         yaw=candidate_viewpoint_positions[i][5]+manipulatorbase_position[5];  
 
         octomath::Vector3 Translation2(iterator.x(),iterator.y(),iterator.z());		
-        octomath::Quaternion Rotation2(roll,picth,yaw);	
+        octomath::Quaternion Rotation2(roll,pitch,yaw);	
         octomath::Pose6D RotandTrans2(Translation2,Rotation2);	
         variablePointwall=pointwall;		
         variablePointwall.transform(RotandTrans2);
@@ -176,29 +168,87 @@ int main(int argc,char**argv)
             for(octomap::KeyRay::iterator it=rayBeam.begin(); it!=rayBeam.end() && Continue; it++){
                 octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
                 if(node!=NULL){
-                    // if (node->getValue()==13){
                     cloudAndUnknown.updateNode(*it, false);
+                   //cloudAndUnknown.setNodeValue(*it, 1, false);
                     Continue=false;
-                    //}
-                    // if (node->getValue()==13){
-                    //     // std::cout<<"the position is:"<<rayBeam.begin()<<std::endl;
-                    //     flag1=cloudAndUnknown.updateNode(*it, false);
-                    //     // node->setColor(255,255,0);
-                    //     node->setValue(24);
-                    //     // flag1=node->getOccupancy();
-                    //     std::cout<<"the updation state is: "<<flag1<<std::endl;
-                    //     known_points_projection++;
-                    //     Continue=false;
-                    // }
                 }
             }
         }
 		cloudAndUnknown.updateInnerOccupancy();
 
         // test 3: obtian occupied voxel number 
+        octomap::point3d iterator1; 
+        int uncoverage_points_num=0;
+        
+        for (size_t i = 0; i < cloud->points.size (); ++i){ 
+            iterator1.x()=cloud->points[i].x+cloudCentroid[0];
+            iterator1.y()=cloud->points[i].y+cloudCentroid[1];
+            iterator1.z()=cloud->points[i].z+cloudCentroid[2];
+            octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
+            if(node1!=NULL){
+                if (node1->getValue()==13){
+                    uncoverage_points_num++;
+                }
+            }
+        }
+        candidateviewpoints_coveragenode_num[i]=cloud->points.size()-uncoverage_points_num;
+        std::cout<<"the uncoverage points number is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
+        std::cout<<"---------------------------------"<<std::endl;
+
+        // cloudAndUnknown.insertPointCloud(variablePointwall, iterator);
+
     }
     
     // selected the best viewpoint positions 
+    float nextbest_viewpoint_position[cartesian_freedom];
+    int max_coveragenode_num=0;
+    int max_index;
+    for (int i=0;i<candidate_viewpoints_num;i++){
+        if (candidateviewpoints_coveragenode_num[i]>=max_coveragenode_num){
+            max_index=i;
+        }
+    }
+    for (int i=0; i<cartesian_freedom; i++){
+        nextbest_viewpoint_position[i]=candidate_viewpoint_positions[max_index][i];
+    }
+
+
+    // compute the inverse kinematic solutions for next best viewpoint
+    double rpy1=nextbest_viewpoint_position
+
+    VectorXd q(6);
+    q<<6.33,18.66,142.092,120.32,86.375,0.101;
+    VectorXd q_result(6);
+    deg_to_rad(q_result,q);
+    std::cout<<q_result<<std::endl;
+    
+
+    MatrixXd T_target(4,4);
+    T_target(0,0) =  -0.991144;
+    T_target(0,1) = -0.0291793;
+    T_target(0,2) = -0.129545;
+    T_target(0,3) = 0.0;
+    T_target(1,0) = -0.131647;
+    T_target(1,1) = 0.0881837;
+    T_target(1,2) =  0.987367;
+    T_target(1,3) = 0.0;
+    T_target(2,0) = -0.0173869;
+    T_target(2,1) = 0.995677;
+    T_target(2,2) = -0.0912442;
+    T_target(2,3) = 0.6;
+    T_target.row(3) << 0, 0, 0, 1;
+    Eigen::VectorXd q_last(6);
+    bool flag;
+    flag=GetInverseResult(T_target,q_result,q_last);
+    if (flag==true){
+        std::cout<<"q_result is:"<<q_result<<std::endl;
+        std::cout<<"q_last is:"<<q_last<<std::endl;
+    }
+    else
+    {
+        std::cout<<"the best or nothing"<<std::endl;
+    }
+    
 
 
 

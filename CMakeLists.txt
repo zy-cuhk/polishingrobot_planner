@@ -54,12 +54,14 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
-	${PCL_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
+  ${PROJECT_SOURCE_DIR}/include 
+
 )
 
 
-add_executable(manipulator_viewpoints_planning src/manipulator_viewpoints_planning.cpp)
-target_link_libraries(manipulator_viewpoints_planning ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES})
+add_executable(manipulator_viewpoints_planning src/manipulator_viewpoints_planning.cpp src/aubo_kinematics.cpp)
+target_link_libraries(manipulator_viewpoints_planning ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR})
 
 add_executable(mobileplatform_planningresult_visualization src/mobileplatform_planningresult_visualization.cpp)
 target_link_libraries(mobileplatform_planningresult_visualization ${catkin_LIBRARIES} )
