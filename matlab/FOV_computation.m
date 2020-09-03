@@ -1,5 +1,5 @@
 %% FOV computation for structured-light camera
-
+clc,clear all, close all
 lmin=0.6;
 lmax=1.2;
 delta_l=0.01;
@@ -27,7 +27,7 @@ for i=1:1:num
     width(i)=w;
     height(i)=h;
     
-    if abs(l-0.900)<0.01
+    if abs(l-1.200)<0.01
         best_width=width(i);
         best_height=height(i);
     end
@@ -42,7 +42,7 @@ hold off;
 best_width
 best_height
 
-0.72:0.45
+% 0.72:0.45
 
 
 

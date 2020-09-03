@@ -6,6 +6,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <math.h>
+#include <cmath>
 #include <string>
 #include <stdlib.h>
 #include <sstream>
@@ -40,6 +41,7 @@ int main(int argc,char**argv)
     // build up the simplified wall model in pcd file format 
     pcl::PointCloud<pcl::PointXYZ> new_cloud;
     
+    // the parameters from covered wall workspace is shown as follows:
     float cell_width= 0.8246;
     float wall2mobileplatformbase_distance=1.0;
     float wall_height =2.70;
@@ -117,6 +119,88 @@ int main(int argc,char**argv)
             pointwall.push_back(Point3dwall);
         }
     }
+
+    // create FOV Of camera
+    octomap::point3d Point3dwall(0.0,0.0,1.20);    
+    octomap::Pointcloud pointwall;     
+    // for(int ii=1;ii<321;ii++){
+    for(int ii=1;ii<283;ii++){
+        for(int iii=1;iii<173;iii++){
+            Point3dwall.y()= (-0.4920)+(ii*0.003489);
+            Point3dwall.x()= (-0.3080)+(iii*0.003574);
+            pointwall.push_back(Point3dwall);
+        }
+    }
+
+    // sample viewpoint positions 
+    int candidate_viewpoints_num = 1
+    int cartesian_freedom = 6
+    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom]
+    for (i=0; i<candidate_viewpoints_num; i++){
+        candidate_viewpoint_positions[i][0]=0.0;
+        candidate_viewpoint_positions[i][1]=0.0;
+        candidate_viewpoint_positions[i][2]=0.6;
+        candidate_viewpoint_positions[i][3]=0.0;
+        candidate_viewpoint_positions[i][4]=M_PI/2; 
+        candidate_viewpoint_positions[i][0]=0.0;
+    }
+    float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0}
+    // obtain the occupied octomap nodes for candidate viewpoints
+    for (i=0; i<candidate_viewpoints_num; i++){
+
+        // step 1: obtain the pose of camera viewpoint 
+        octomap::Pointcloud variablePointwall;     
+        octomap::point3d iterator; 
+        iterator.x()=candidate_viewpoint_positions[i][0]+manipulatorbase_position[0];        
+        iterator.y()=candidate_viewpoint_positions[i][1]+manipulatorbase_position[1];    
+        iterator.z()=candidate_viewpoint_positions[i][2]+manipulatorbase_position[2];    
+        
+        float roll, pitch, yaw;
+        roll=candidate_viewpoint_positions[i][3]+manipulatorbase_position[3];  
+        pitch=candidate_viewpoint_positions[i][4]+manipulatorbase_position[4];  
+        yaw=candidate_viewpoint_positions[i][5]+manipulatorbase_position[5];  
+
+        octomath::Vector3 Translation2(iterator.x(),iterator.y(),iterator.z());		
+        octomath::Quaternion Rotation2(roll,picth,yaw);	
+        octomath::Pose6D RotandTrans2(Translation2,Rotation2);	
+        variablePointwall=pointwall;		
+        variablePointwall.transform(RotandTrans2);
+
+        // step 2: raycast to obtain voxel
+        octomap::KeyRay rayBeam;
+        int unknownVoxelsInRay=0;
+        int known_points_projection=0;
+        for (int ii=0; ii<variablePointwall.size();ii++){
+            bool Continue=true;		
+            cloudAndUnknown.computeRayKeys(iterator,variablePointwall.getPoint(ii),rayBeam);
+            for(octomap::KeyRay::iterator it=rayBeam.begin(); it!=rayBeam.end() && Continue; it++){
+                octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
+                if(node!=NULL){
+                    // if (node->getValue()==13){
+                    cloudAndUnknown.updateNode(*it, false);
+                    Continue=false;
+                    //}
+                    // if (node->getValue()==13){
+                    //     // std::cout<<"the position is:"<<rayBeam.begin()<<std::endl;
+                    //     flag1=cloudAndUnknown.updateNode(*it, false);
+                    //     // node->setColor(255,255,0);
+                    //     node->setValue(24);
+                    //     // flag1=node->getOccupancy();
+                    //     std::cout<<"the updation state is: "<<flag1<<std::endl;
+                    //     known_points_projection++;
+                    //     Continue=false;
+                    // }
+                }
+            }
+        }
+		cloudAndUnknown.updateInnerOccupancy();
+
+        // test 3: obtian occupied voxel number 
+    }
+    
+    // selected the best viewpoint positions 
+
+
 
 
     octomapMsg.header.frame_id = "map";
