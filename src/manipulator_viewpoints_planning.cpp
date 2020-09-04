@@ -214,41 +214,24 @@ int main(int argc,char**argv)
 
 
     // compute the inverse kinematic solutions for next best viewpoint
-    double rpy1=nextbest_viewpoint_position
+    double rpy[3]={nextbest_viewpoint_position[3],nextbest_viewpoint_position[4],nextbest_viewpoint_position[5]};
+    MatrixXd rot(3,3), tran(3,1), robot_matrix(4,4);
+    rot=RPYtoRotMatrix(rpy);
+    tran<<a[0], a[1], a[2];
+    robot_matrix<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
+                  rot(1,0),rot(1,1),rot(1,2),tran(1,0),
+                  rot(2,0),rot(2,1),rot(2,2),tran(2,0),
+                  0,0,0,1;
+    std::cout<<"the robot matrix is"<<std::endl;
+    std::cout<<robot_matrix<<std::endl;
 
-    VectorXd q(6);
-    q<<6.33,18.66,142.092,120.32,86.375,0.101;
-    VectorXd q_result(6);
-    deg_to_rad(q_result,q);
-    std::cout<<q_result<<std::endl;
+    bool inverse_solution_flag;
+    MatrixXd q_mat;
+    inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
     
 
-    MatrixXd T_target(4,4);
-    T_target(0,0) =  -0.991144;
-    T_target(0,1) = -0.0291793;
-    T_target(0,2) = -0.129545;
-    T_target(0,3) = 0.0;
-    T_target(1,0) = -0.131647;
-    T_target(1,1) = 0.0881837;
-    T_target(1,2) =  0.987367;
-    T_target(1,3) = 0.0;
-    T_target(2,0) = -0.0173869;
-    T_target(2,1) = 0.995677;
-    T_target(2,2) = -0.0912442;
-    T_target(2,3) = 0.6;
-    T_target.row(3) << 0, 0, 0, 1;
-    Eigen::VectorXd q_last(6);
-    bool flag;
-    flag=GetInverseResult(T_target,q_result,q_last);
-    if (flag==true){
-        std::cout<<"q_result is:"<<q_result<<std::endl;
-        std::cout<<"q_last is:"<<q_last<<std::endl;
-    }
-    else
-    {
-        std::cout<<"the best or nothing"<<std::endl;
-    }
     
+
 
 
 

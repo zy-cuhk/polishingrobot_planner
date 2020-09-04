@@ -8,7 +8,6 @@ import numpy
 import os,sys
 import socket
 
-from aubo_kienamatics import *
 from sensor_msgs.msg import JointState
 import yaml
 import numpy as np
@@ -33,18 +32,6 @@ class AuboCollisionCheck():
         for i in tuplelist:
             dd.append(i*180/math.pi)
         return dd
-    def addtrans(self,inital_list_data,list_data):
-        temp=[]
-        for i in range(len(inital_list_data)):
-            if i==3:
-                temp.append(list_data[0])
-            elif i==7:
-                temp.append(list_data[1])
-            elif i==11:
-                temp.append(list_data[2])
-            else:
-                temp.append(inital_list_data[i])
-        return temp
     def pub_state(self,robot_state):
         js = JointState()
         js.header.stamp = rospy.Time.now()
@@ -61,83 +48,22 @@ class AuboCollisionCheck():
         self.aubo_joints_value[3]=msg.position[7]
         self.aubo_joints_value[4]=msg.position[8]
         self.aubo_joints_value[5]=msg.position[9]
-    def aubo_reachjoints(self, pub_joints_value):
-        if self.aubo_joints_value==pub_joints_value:
-            flag=True
-        else:
-            flag=False
-        return flag
 
 def main():
     Aub=AuboCollisionCheck()
     Aub.Init_node()
 
-    ratet=2
-    rate = rospy.Rate(ratet)
-
     temp=[0.0,0.0,0.0,0.0]
-    q_ref=[6.33,18.66,142.092,120.32,86.375,0.101]
-    q_ref_rad=Aub.deg_to_rad(temp+q_ref)
+    # q_ref=[6.33,18.66,142.092,120.32,86.375,0.101]
+    # q_ref_rad=Aub.deg_to_rad(temp+q_ref)
     
-    
-    Aub.pub_state(q_ref_rad)
-
-
-    Aubo10=Aubo_kinematics()
-    mat = loadmat("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_viewpointplanner/script/data.mat")
-    viewpoints_num_count=1
-    q_sol_without_collistion_dict={}
-    viewpoints_dict={}
-    # for i in range(1):
-    #     for j in range(1):
-    for i in range(len(mat["camera_viewpoints"])):
-        for j in range(len(mat["camera_viewpoints"][0])):
-            print("----------------------------------------------------")
-            print("the viewpoints number is:",viewpoints_num_count)
-            trans=mat["camera_viewpoints"][i,j,0:3]
-            T_matrix=Aub.addtrans(Aubo10.aubo_forward(q_ref),trans)
-            q_dict=Aubo10.GetInverseResult_without_ref(T_matrix)
-            # print("q_dict",q_dict)
-            not_collision_qlist=[]
-            if q_dict!=None:
-                collision_count=0
-                for m in range(len(q_dict)):
-                    Aub.pub_state(temp+q_dict[m])
-                    pub_joints_value=q_dict[m]
-                    rate.sleep()
-                    while(1):
-                        Aubo_state=Aub.aubo_reachjoints(q_dict[m])
-                        if Aubo_state==True:
-                            judge_self_collision_flag=rospy.get_param('judge_self_collision_flag')
-                            if judge_self_collision_flag==False:
-                                not_collision_qlist=not_collision_qlist+q_dict[m]
-                                rospy.logerr("the joints value is not in collison")
-                                print(q_dict[m])
-                            else:
-                                collision_count=collision_count+1
-                            if collision_count==len(q_dict):
-                                rospy.logerr("all viewpoints at this viewpoints are collision")
-                            # q_sol_without_collistion_dict.update({viewpoints_num_count:not_collision_qlist})
-                            break
-            # else:
-            q_sol_without_collistion_dict.update({viewpoints_num_count:not_collision_qlist})
-            viewpoints_dict.update({viewpoints_num_count:trans})
-            viewpoints_num_count=viewpoints_num_count+1
-    print(q_sol_without_collistion_dict)
-    print("------------------------------------")
-    print(viewpoints_dict)
-
+    q_ref=[-2.27691, -0.58445, -1.42695, 2.29909, 2.43548, 1.5708]
+    q_ref_rad=temp+q_ref
     ratet=0.5
     rate = rospy.Rate(ratet)
     while not rospy.is_shutdown():
-        for i in range(len(q_sol_without_collistion_dict)):
-            list1=q_sol_without_collistion_dict[i+1]
-            if len(list1)!=0:
-                print("list1 is:",list1)
-                q_list=list1[0:6]
-                q_list=temp+q_list
-                Aub.pub_state(q_list)
-                rate.sleep()
+        Aub.pub_state(q_ref_rad)
+        rate.sleep()
     
 
     
