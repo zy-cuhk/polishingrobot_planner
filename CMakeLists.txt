@@ -77,3 +77,6 @@ target_link_libraries(polishingrobot_states_sub ${catkin_LIBRARIES} )
 
 add_executable(polishingrobot_states_pubsub src/polishingrobot_states_pubsub.cpp)
 target_link_libraries(polishingrobot_states_pubsub ${catkin_LIBRARIES} )
+
+add_executable(polishingrobot_statespub_collisiondetection src/polishingrobot_statespub_collisiondetection.cpp)
+target_link_libraries(polishingrobot_statespub_collisiondetection ${catkin_LIBRARIES} )

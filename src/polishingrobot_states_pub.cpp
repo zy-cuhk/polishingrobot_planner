@@ -43,12 +43,12 @@ int main(int argc, char** argv)
 
         joint_state.position[3] = 0.0;
         
-        joint_state.position[4] = 0.0;
-        joint_state.position[5] = 0.0;
-        joint_state.position[6] = 3.15;
-        joint_state.position[7] = 0.0;
-        joint_state.position[8] = 0.0;
-        joint_state.position[9] = 0.0;
+        joint_state.position[4] = -2.27691;
+        joint_state.position[5] =  1.00442;
+        joint_state.position[6] = 1.86366;
+        joint_state.position[7] = -2.28235;
+        joint_state.position[8] =  2.43548;
+        joint_state.position[9] =  1.5708;
 
         joint_pub.publish(joint_state);
         loop_rate.sleep();

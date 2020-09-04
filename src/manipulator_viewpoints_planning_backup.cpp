@@ -32,20 +32,7 @@
 #include <octomap_msgs/Octomap.h>
 #include <octomap_msgs/conversions.h>
 
-#include <sensor_msgs/JointState.h>
-#include <robot_state_publisher/robot_state_publisher.h>
 
-float sub_joints[6]={0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-
-void jointstatesCallback(const sensor_msgs::JointStateConstPtr& msg)
-{
-  sub_joints[0]=msg->position[4];
-  sub_joints[1]=msg->position[5];
-  sub_joints[2]=msg->position[6];
-  sub_joints[3]=msg->position[7];
-  sub_joints[4]=msg->position[8];
-  sub_joints[5]=msg->position[9];
-}
 
 using namespace std;
 
@@ -54,78 +41,81 @@ int main(int argc,char**argv)
     // ros node initialization
 	ros::init (argc, argv, "viewpoint_planning_using_octomap");  
 	ros::NodeHandle nh;  
-    int hz=10;
-	ros::Rate loop_rate(hz);
 
-    // set up rostopics 
-	ros::Publisher pcl_pub = nh.advertise<sensor_msgs::PointCloud2> ("/pointcloud/output", 10);  
-	sensor_msgs::PointCloud2 output;  
-	output.header.stamp=ros::Time::now();
-	output.header.frame_id ="map";
-
-    ros::Publisher octomapPublisher = nh.advertise<octomap_msgs::Octomap>("octomap", 1, false);
-    octomap_msgs::Octomap octomapMsg;
-    octomapMsg.header.frame_id = "map";
-
-    ros::Publisher joint_pub = nh.advertise<sensor_msgs::JointState>("joint_states", 1);
-    ros::Subscriber sub = nh.subscribe("/joint_states", 10, jointstatesCallback);
-
-    sensor_msgs::JointState joint_state;
-    joint_state.header.frame_id="map";
-    joint_state.name.resize(10);
-    joint_state.position.resize(10);
-    joint_state.name[0]="base_joint1";
-    joint_state.name[1]="base_joint2";
-    joint_state.name[2]="mobilebase_joint";
-    joint_state.name[3]="rodclimbing_joint";
-    joint_state.name[4]="shoulder_joint";
-    joint_state.name[5]="upperArm_joint";
-    joint_state.name[6]="foreArm_joint";
-    joint_state.name[7]="wrist1_joint";
-    joint_state.name[8]="wrist2_joint";
-    joint_state.name[9]="wrist3_joint";
-
-
-    // build up the simplified wall model in pcd file format and the parameters from covered wall workspace is shown as follows:
-    pcl::PointCloud<pcl::PointXYZ> cloud;
+    // build up the simplified wall model in pcd file format 
+    pcl::PointCloud<pcl::PointXYZ> new_cloud;
+    
+    // the parameters from covered wall workspace is shown as follows:
     float cell_width= 0.8246;
     float wall2mobileplatformbase_distance=1.0;
     float wall_height =2.70;
-    cloud.width=24;
-    cloud.height=76;
-    cloud.is_dense=false;
-    cloud.points.resize(cloud.width*cloud.height);
-    int ii, iii;
-    for(size_t i=0;i<cloud.points.size();++i)
-    {
-        ii=int(i/cloud.height);
-        iii=int(i%cloud.height);
 
-        cloud.points[i].x=wall2mobileplatformbase_distance;
-        cloud.points[i].y=(-cell_width/2)+(ii*0.03489);
-        cloud.points[i].z=(0.0)+(iii*0.03574);
+    new_cloud.width=24;
+    new_cloud.height=76;
+    new_cloud.is_dense=false;
+    new_cloud.points.resize(new_cloud.width*new_cloud.height);
+
+    int ii, iii;
+    for(size_t i=0;i<new_cloud.points.size();++i)
+    {
+        ii=int(i/new_cloud.height);
+        iii=int(i%new_cloud.height);
+
+        new_cloud.points[i].x=wall2mobileplatformbase_distance;
+        new_cloud.points[i].y=(-cell_width/2)+(ii*0.03489);
+        new_cloud.points[i].z=(0.0)+(iii*0.03574);
     }
+    // write pcd 
+    pcl::io::savePCDFileASCII("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/data/test_pcd.pcd",new_cloud);
+
+
+    // set up pcl rostopic and transform pcd to point cloud 
+	std::string topic,path,frame_id;
+    int hz=5;
+    nh.param<std::string>("path", path, "/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/data/test_pcd.pcd");
+	nh.param<std::string>("frame_id", frame_id, "map");
+	nh.param<std::string>("topic", topic, "/pointcloud/output");
+    nh.param<int>("hz", hz, 5);
+	ros::Publisher pcl_pub = nh.advertise<sensor_msgs::PointCloud2> (topic, 10);  
+	sensor_msgs::PointCloud2 output;  
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
+
+    // set up point cloud rostopic 
+    pcl::io::loadPCDFile<pcl::PointXYZ> (path, *cloud); 
+	pcl::toROSMsg(*cloud,output);
+
+	output.header.stamp=ros::Time::now();
+	output.header.frame_id  =frame_id;
+	ros::Rate loop_rate(hz);
+
+    // set up octomap rostopic 
+    bool isLatch = false;
+    auto octomapPublisher = nh.advertise<octomap_msgs::Octomap>("octomap", 1, isLatch);
+    octomap_msgs::Octomap octomapMsg;
+
 
     // create octree from point cloud 
     float cloudCentroid[3]={0,0,0};
     octomap::OcTree cloudAndUnknown(0.01);
-    for (size_t i = 0; i < cloud.points.size (); ++i){ 
-        octomap::OcTreeNode * cloudNode=cloudAndUnknown.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],true);
+    for (size_t i = 0; i < cloud->points.size (); ++i){ 
+        octomap::OcTreeNode * cloudNode=cloudAndUnknown.updateNode(cloud->points[i].x+cloudCentroid[0],cloud->points[i].y+cloudCentroid[1],cloud->points[i].z+cloudCentroid[2],true);
         cloudNode->setValue(1);
     }
 
-    //visualize octree
+    //visualize pcd document octree
     octomap::Pointcloud scan;
     octomap::OcTree tree(0.05);
     octomap::point3d sensorOrigin(0,0,0);
-    for (size_t i =0; i < cloud.points.size (); ++i){
-        scan.push_back(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2]);
+    for (size_t i =0; i < cloud->points.size (); ++i){
+        scan.push_back(cloud->points[i].x+cloudCentroid[0],cloud->points[i].y+cloudCentroid[1],cloud->points[i].z+cloudCentroid[2]);
     }
     tree.insertPointCloud(scan, sensorOrigin);
+
 
     // create FOV Of camera
     octomap::point3d Point3dwall(0.0,0.0,1.20);    
     octomap::Pointcloud pointwall;     
+    // for(int ii=1;ii<321;ii++){
     for(int ii=1;ii<283;ii++){
         for(int iii=1;iii<173;iii++){
             Point3dwall.y()= (-0.4920)+(ii*0.003489);
@@ -181,6 +171,7 @@ int main(int argc,char**argv)
                 octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
                 if(node!=NULL){
                     cloudAndUnknown.updateNode(*it, false);
+                   //cloudAndUnknown.setNodeValue(*it, 1, false);
                     Continue=false;
                 }
             }
@@ -191,10 +182,10 @@ int main(int argc,char**argv)
         octomap::point3d iterator1; 
         int uncoverage_points_num=0;
         
-        for (size_t i = 0; i < cloud.points.size (); ++i){ 
-            iterator1.x()=cloud.points[i].x+cloudCentroid[0];
-            iterator1.y()=cloud.points[i].y+cloudCentroid[1];
-            iterator1.z()=cloud.points[i].z+cloudCentroid[2];
+        for (size_t i = 0; i < cloud->points.size (); ++i){ 
+            iterator1.x()=cloud->points[i].x+cloudCentroid[0];
+            iterator1.y()=cloud->points[i].y+cloudCentroid[1];
+            iterator1.z()=cloud->points[i].z+cloudCentroid[2];
             octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
             if(node1!=NULL){
                 if (node1->getValue()==13){
@@ -202,9 +193,10 @@ int main(int argc,char**argv)
                 }
             }
         }
-        candidateviewpoints_coveragenode_num[i]=cloud.points.size()-uncoverage_points_num;
+        candidateviewpoints_coveragenode_num[i]=cloud->points.size()-uncoverage_points_num;
         std::cout<<"the uncoverage points number is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
         std::cout<<"---------------------------------"<<std::endl;
+
         // cloudAndUnknown.insertPointCloud(variablePointwall, iterator);
 
     }
@@ -232,58 +224,28 @@ int main(int argc,char**argv)
                   rot(1,0),rot(1,1),rot(1,2),tran(1,0),
                   rot(2,0),rot(2,1),rot(2,2),tran(2,0),
                   0,0,0,1;
+    std::cout<<"the robot matrix is"<<std::endl;
+    std::cout<<robot_matrix<<std::endl;
+
     bool inverse_solution_flag;
     MatrixXd q_mat;
-    VectorXd aubo_q(6);
     inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
-
-    float pub_joints[6];
-    bool judge_self_collision_flag;
-
+    MatrixXd robot_matrix1(4,4);
     if (inverse_solution_flag==true){
         for (int i=0;i<int(q_mat.size()/6);i++){
-            aubo_q<<q_mat(0,i),q_mat(1,i),q_mat(2,i),q_mat(3,i),q_mat(4,i),q_mat(5,i);
-            cout<<"aubo q is:"<<aubo_q<<endl;
-            for (size_t j=0; j<6;j++){
-                pub_joints[j]=aubo_q(j);
-            }
-            while (ros::ok()) {
-                if ((pub_joints[0]==sub_joints[0])&&(pub_joints[1]==sub_joints[1])&&(pub_joints[2]==sub_joints[2])&&(pub_joints[3]==sub_joints[3])&&(pub_joints[4]==sub_joints[4])&&(pub_joints[5]==sub_joints[5])){
-                    ros::param::get("/judge_self_collision_flag", judge_self_collision_flag);
-                        if (judge_self_collision_flag==0){
-                            cout<<"no collision"<<endl;
-                        }
-                        else{
-                            cout<<"collision"<<endl;
-                        }
-                        break;
-                }
-                else{
-                    for (int time=0;time<20;time++){
-                    joint_state.header.stamp = ros::Time::now();
-                    joint_state.position[0] = 0.0;
-                    joint_state.position[1] = 0.0;
-                    joint_state.position[2] = 0.0;
-                    joint_state.position[3] = 0.0;
-                    
-                    joint_state.position[4] = pub_joints[0];
-                    joint_state.position[5] = pub_joints[1];
-                    joint_state.position[6] = pub_joints[2];
-                    joint_state.position[7] = pub_joints[3];
-                    joint_state.position[8] = pub_joints[4];
-                    joint_state.position[9] = pub_joints[5];
-
-                    joint_pub.publish(joint_state);
-                    loop_rate.sleep();  
-                    ros::spinOnce();  
-                    }
-                }     
-            }
+            aubo_forward(robot_matrix1, q_mat.col(i));
+            std::cout<<"----------------------------------------"<<std::endl;
+            std::cout<<"q_mat.col is"<<q_mat.col(i)<<std::endl;
+            std::cout<<"robot matrix 1 is:"<<robot_matrix1<<std::endl;
         }
     }
 
     // publish robot state to complete collision check
     
+
+
+
+    octomapMsg.header.frame_id = "map";
     octomap_msgs::binaryMapToMsg(cloudAndUnknown, octomapMsg);
     while (ros::ok())
     {

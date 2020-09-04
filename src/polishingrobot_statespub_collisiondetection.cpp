@@ -73,6 +73,25 @@ int main(int argc, char** argv)
   spinner.start();
 
   ros::NodeHandle node_handle;
+  ros::Publisher joint_pub = node_handle.advertise<sensor_msgs::JointState>("joint_states", 1);
+
+  sensor_msgs::JointState joint_state;
+  joint_state.header.frame_id="map";
+  joint_state.name.resize(10);
+  joint_state.position.resize(10);
+
+  joint_state.name[0]="base_joint1";
+  joint_state.name[1]="base_joint2";
+  joint_state.name[2]="mobilebase_joint";
+  joint_state.name[3]="rodclimbing_joint";
+  joint_state.name[4]="shoulder_joint";
+  joint_state.name[5]="upperArm_joint";
+  joint_state.name[6]="foreArm_joint";
+  joint_state.name[7]="wrist1_joint";
+  joint_state.name[8]="wrist2_joint";
+  joint_state.name[9]="wrist3_joint";
+
+
   robot_model_loader::RobotModelLoaderPtr robot_model_loader(
   new robot_model_loader::RobotModelLoader("robot_description"));
 
@@ -99,13 +118,28 @@ int main(int argc, char** argv)
   planning_scene::PlanningScenePtr planning_scene = planning_scene_monitor->getPlanningScene();
   robot_state::RobotState& current_state = planning_scene->getCurrentStateNonConst();
   add_objects(planning_scene_interface);
-  sleep(2);
+  //sleep(2);
 
-  ros::Rate loop_rate(50.0);
+  ros::Rate loop_rate(10.0);
   bool self_collision_state, environment_collision_state;
 
   while (ros::ok())
   {
+      joint_state.header.stamp = ros::Time::now();
+      joint_state.position[0] = 0.0;
+      joint_state.position[1] = 0.0;
+      joint_state.position[2] = 0.0;
+
+      joint_state.position[3] = 0.0;
+        
+      joint_state.position[4] = 0.0;
+      joint_state.position[5] = 0.0;
+      joint_state.position[6] = 3.15;
+      joint_state.position[7] = 0.0;
+      joint_state.position[8] = 0.0;
+      joint_state.position[9] = 0.0;
+
+      joint_pub.publish(joint_state);
 
       bool exist_dae_mesh = planning_scene->getWorld()->hasObject("dae_mesh");
       ROS_WARN("exist_dae_mesh: %d", exist_dae_mesh);
