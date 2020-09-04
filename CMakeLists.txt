@@ -68,3 +68,12 @@ target_link_libraries(manipulator_viewpoints_planning ${catkin_LIBRARIES} ${OCTO
 
 add_executable(mobileplatform_planningresult_visualization src/mobileplatform_planningresult_visualization.cpp)
 target_link_libraries(mobileplatform_planningresult_visualization ${catkin_LIBRARIES} )
+
+add_executable(polishingrobot_states_pub src/polishingrobot_states_pub.cpp)
+target_link_libraries(polishingrobot_states_pub ${catkin_LIBRARIES} )
+
+add_executable(polishingrobot_states_sub src/polishingrobot_states_sub.cpp)
+target_link_libraries(polishingrobot_states_sub ${catkin_LIBRARIES} )
+
+add_executable(polishingrobot_states_pubsub src/polishingrobot_states_pubsub.cpp)
+target_link_libraries(polishingrobot_states_pubsub ${catkin_LIBRARIES} )

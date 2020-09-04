@@ -239,6 +239,7 @@ int main(int argc,char**argv)
     }
 
     // publish robot state to complete collision check
+    
 
 
 
