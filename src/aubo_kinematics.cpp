@@ -451,7 +451,6 @@ MatrixXd processIK(const MatrixXd& T)
     int num_sols = 0, real_sols = 0;
 
     num_sols = aubo_inverse(q_sols, T);
-
     for(int i = 0; i < num_sols; i++)
     {
         MatrixXd TT(4,4);
@@ -691,6 +690,8 @@ bool GetInverseResult(const MatrixXd& T_target, const VectorXd& q_ref, VectorXd&
 
     //inverse and remove zero matrixXd
     num_sols = aubo_inverse(q_sols_all, T_target);
+    // std::cout<<"the q solution is:"<<q_sols_all<<std::endl;
+
     for (size_t i = 0; i < 8; i++)
     {
         /* code */
@@ -743,6 +744,50 @@ bool GetInverseResult(const MatrixXd& T_target, const VectorXd& q_ref, VectorXd&
     }
 }
 
+
+bool GetInverseResult_withoutref(const MatrixXd& T_target, MatrixXd& q_sol_Valid)
+{
+    u_int8_t num_sols = 0;
+    double maxq = 175.0/180.0*M_PI;
+    double AngleLimit[6][2] = {{-maxq,maxq},{-maxq,maxq},{-maxq,maxq},{-maxq,maxq},{-maxq,maxq},{-maxq,maxq}};
+    MatrixXd q_sols_all(6,8),
+             q_sols_RmZero,
+             q_sols_inlimit(6,8);
+            // q_sol_Valid;
+
+    num_sols = aubo_inverse(q_sols_all, T_target);
+    // for (size_t i = 0; i < 8; i++)
+    // {
+    //     for (size_t j = 0; j < 6; j++)
+    //     {
+    //         std::cout<<" "<<q_sols_all(j,i)<<" ";
+    //     }
+    //     std::cout<<std::endl;
+    // }
+    
+    q_sols_RmZero = q_sols_all.block(0,0,6,num_sols);
+    if(q_sols_RmZero.cols() != 0)
+    {
+        bool ret2 = selectIK(q_sols_RmZero, AngleLimit, q_sols_inlimit, num_sols);
+        q_sol_Valid = q_sols_inlimit.block(0,0,6,num_sols);
+
+        if((q_sol_Valid.cols() != 0) && (true == ret2))
+        {
+            std::cout << " find solution choose  " <<std::endl;
+            return true;
+        }
+        else
+        {
+            std::cout <<"no valid sols "<<std::endl;
+            return false;
+        }
+    }
+    else
+    {
+        std::cout<< "inverse result num is 0" <<std::endl;
+        return false;
+    }
+}
 
 
 

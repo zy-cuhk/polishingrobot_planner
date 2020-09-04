@@ -73,6 +73,7 @@ bool decisionIK(const MatrixXd& q_sols, const VectorXd& q_ref, VectorXd& q_choos
 bool GetInverseResult(const MatrixXd& T_target, const VectorXd& q_ref, VectorXd& q_result);
 
 
+bool GetInverseResult_withoutref(const MatrixXd& T_target, MatrixXd& q_sol_Valid);
 
 
 

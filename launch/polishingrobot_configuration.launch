@@ -5,9 +5,9 @@
   </include>
 
   <!-- load collision check modular-->
-  <!-- <param name="judge_self_collision_flag" type="int" value="0"/>
-  <node name="collision_check" pkg="polishingrobot_viewpointplanner" type="polishingrobot_viewpointplanner" respawn="false" output="screen">
-  </node> -->
+  <param name="judge_self_collision_flag" type="int" value="0"/>
+  <node name="collision_detection" pkg="polishingrobot_planner" type="collision_detection" respawn="false" output="screen">
+  </node>
 
   <!-- Load viewpoint planning with octomap-->
   <!-- <node name="publish_pointcloud" pkg="publish_pointcloud" type="publish_pointcloud">

@@ -128,11 +128,11 @@ int main(int argc,char**argv)
     float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom];
     for (int i=0; i<candidate_viewpoints_num; i++){
         candidate_viewpoint_positions[i][0]=0.0;
-        candidate_viewpoint_positions[i][1]=0.0;
-        candidate_viewpoint_positions[i][2]=0.6;
+        candidate_viewpoint_positions[i][1]=0.2;
+        candidate_viewpoint_positions[i][2]=0.8;
         candidate_viewpoint_positions[i][3]=0.0;
         candidate_viewpoint_positions[i][4]=M_PI/2; 
-        candidate_viewpoint_positions[i][0]=0.0;
+        candidate_viewpoint_positions[i][5]=0.0;
     }
     float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
     int candidateviewpoints_coveragenode_num[candidate_viewpoints_num];
@@ -217,7 +217,7 @@ int main(int argc,char**argv)
     double rpy[3]={nextbest_viewpoint_position[3],nextbest_viewpoint_position[4],nextbest_viewpoint_position[5]};
     MatrixXd rot(3,3), tran(3,1), robot_matrix(4,4);
     rot=RPYtoRotMatrix(rpy);
-    tran<<a[0], a[1], a[2];
+    tran<<nextbest_viewpoint_position[0], nextbest_viewpoint_position[1], nextbest_viewpoint_position[2];
     robot_matrix<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
                   rot(1,0),rot(1,1),rot(1,2),tran(1,0),
                   rot(2,0),rot(2,1),rot(2,2),tran(2,0),
@@ -228,11 +228,17 @@ int main(int argc,char**argv)
     bool inverse_solution_flag;
     MatrixXd q_mat;
     inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
-    
+    MatrixXd robot_matrix1(4,4);
+    if (inverse_solution_flag==true){
+        for (int i=0;i<int(q_mat.size()/6);i++){
+            aubo_forward(robot_matrix1, q_mat.col(i));
+            std::cout<<"----------------------------------------"<<std::endl;
+            std::cout<<"q_mat.col is"<<q_mat.col(i)<<std::endl;
+            std::cout<<"robot matrix 1 is:"<<robot_matrix1<<std::endl;
+        }
+    }
 
-    
-
-
+    // publish robot state to complete collision check
 
 
 

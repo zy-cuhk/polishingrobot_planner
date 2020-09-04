@@ -59,6 +59,9 @@ include_directories(
 
 )
 
+add_executable(collision_detection src/moveit_collision_detection.cpp)
+target_link_libraries(collision_detection ${catkin_LIBRARIES})
+install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 add_executable(manipulator_viewpoints_planning src/manipulator_viewpoints_planning.cpp src/aubo_kinematics.cpp)
 target_link_libraries(manipulator_viewpoints_planning ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR})
