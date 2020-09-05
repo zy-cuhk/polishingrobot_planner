@@ -14,6 +14,8 @@
 #include <fstream>
 #include <assert.h>
 #include "../include/aubo_kinematics.h"
+#include <jsoncpp/json/json.h> 
+
 
 
 #include <ros/ros.h>  
@@ -51,13 +53,12 @@ using namespace std;
 
 int main(int argc,char**argv)
 {
-    // ros node initialization
+    // initialize ros node and setup ros topics
 	ros::init (argc, argv, "viewpoint_planning_using_octomap");  
 	ros::NodeHandle nh;  
     int hz=10;
 	ros::Rate loop_rate(hz);
 
-    // set up rostopics 
 	ros::Publisher pcl_pub = nh.advertise<sensor_msgs::PointCloud2> ("/pointcloud/output", 10);  
 	sensor_msgs::PointCloud2 output;  
 	output.header.stamp=ros::Time::now();
@@ -85,8 +86,8 @@ int main(int argc,char**argv)
     joint_state.name[8]="wrist2_joint";
     joint_state.name[9]="wrist3_joint";
 
-
-    // build up the simplified wall model in pcd file format and the parameters from covered wall workspace is shown as follows:
+    // phase 1: preset for next best view alogrithm 
+    // phase 1-step 1: obtiain points cloud of covered wall workspace is shown as follows:
     pcl::PointCloud<pcl::PointXYZ> cloud;
     float cell_width= 0.8246;
     float wall2mobileplatformbase_distance=1.0;
@@ -106,7 +107,7 @@ int main(int argc,char**argv)
         cloud.points[i].z=(0.0)+(iii*0.03574);
     }
 
-    // create octree from point cloud 
+    // phase 1-step2: create octree from point cloud of covered wall workspace 
     float cloudCentroid[3]={0,0,0};
     octomap::OcTree cloudAndUnknown(0.01);
     for (size_t i = 0; i < cloud.points.size (); ++i){ 
@@ -114,7 +115,7 @@ int main(int argc,char**argv)
         cloudNode->setValue(1);
     }
 
-    //visualize octree
+    // phase 1-step3: visualize octree of covered wall workspace
     octomap::Pointcloud scan;
     octomap::OcTree tree(0.05);
     octomap::point3d sensorOrigin(0,0,0);
@@ -123,7 +124,7 @@ int main(int argc,char**argv)
     }
     tree.insertPointCloud(scan, sensorOrigin);
 
-    // create FOV Of camera
+    // phase 1-step4: create octree of camera FOV 
     octomap::point3d Point3dwall(0.0,0.0,1.20);    
     octomap::Pointcloud pointwall;     
     for(int ii=1;ii<283;ii++){
@@ -134,7 +135,7 @@ int main(int argc,char**argv)
         }
     }
 
-    // sample viewpoint positions 
+    // phase 1-step5: sample candidate camera viewpoint positions 
     int candidate_viewpoints_num = 1;
     int cartesian_freedom = 6;
     float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom];
@@ -148,142 +149,150 @@ int main(int argc,char**argv)
     }
     float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
     int candidateviewpoints_coveragenode_num[candidate_viewpoints_num];
-
-    // obtain the occupied octomap nodes for candidate viewpoints
-    for (int i=0; i<candidate_viewpoints_num; i++){
-
-        // step 1: obtain the pose of camera viewpoint 
-        octomap::Pointcloud variablePointwall;     
-        octomap::point3d iterator; 
-        iterator.x()=candidate_viewpoint_positions[i][0]+manipulatorbase_position[0];        
-        iterator.y()=candidate_viewpoint_positions[i][1]+manipulatorbase_position[1];    
-        iterator.z()=candidate_viewpoint_positions[i][2]+manipulatorbase_position[2];    
-        
-        float roll, pitch, yaw;
-        roll=candidate_viewpoint_positions[i][3]+manipulatorbase_position[3];  
-        pitch=candidate_viewpoint_positions[i][4]+manipulatorbase_position[4];  
-        yaw=candidate_viewpoint_positions[i][5]+manipulatorbase_position[5];  
-
-        octomath::Vector3 Translation2(iterator.x(),iterator.y(),iterator.z());		
-        octomath::Quaternion Rotation2(roll,pitch,yaw);	
-        octomath::Pose6D RotandTrans2(Translation2,Rotation2);	
-        variablePointwall=pointwall;		
-        variablePointwall.transform(RotandTrans2);
-
-        // step 2: raycast to obtain voxel
-        octomap::KeyRay rayBeam;
-        int unknownVoxelsInRay=0;
-        int known_points_projection=0;
-        for (int ii=0; ii<variablePointwall.size();ii++){
-            bool Continue=true;		
-            cloudAndUnknown.computeRayKeys(iterator,variablePointwall.getPoint(ii),rayBeam);
-            for(octomap::KeyRay::iterator it=rayBeam.begin(); it!=rayBeam.end() && Continue; it++){
-                octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
-                if(node!=NULL){
-                    cloudAndUnknown.updateNode(*it, false);
-                    Continue=false;
-                }
-            }
-        }
-		cloudAndUnknown.updateInnerOccupancy();
-
-        // test 3: obtian occupied voxel number 
-        octomap::point3d iterator1; 
-        int uncoverage_points_num=0;
-        
-        for (size_t i = 0; i < cloud.points.size (); ++i){ 
-            iterator1.x()=cloud.points[i].x+cloudCentroid[0];
-            iterator1.y()=cloud.points[i].y+cloudCentroid[1];
-            iterator1.z()=cloud.points[i].z+cloudCentroid[2];
-            octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
-            if(node1!=NULL){
-                if (node1->getValue()==13){
-                    uncoverage_points_num++;
-                }
-            }
-        }
-        candidateviewpoints_coveragenode_num[i]=cloud.points.size()-uncoverage_points_num;
-        std::cout<<"the uncoverage points number is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
-        std::cout<<"---------------------------------"<<std::endl;
-        // cloudAndUnknown.insertPointCloud(variablePointwall, iterator);
-
-    }
     
-    // selected the best viewpoint positions 
-    float nextbest_viewpoint_position[cartesian_freedom];
-    int max_coveragenode_num=0;
-    int max_index;
-    for (int i=0;i<candidate_viewpoints_num;i++){
-        if (candidateviewpoints_coveragenode_num[i]>=max_coveragenode_num){
-            max_index=i;
-        }
-    }
-    for (int i=0; i<cartesian_freedom; i++){
-        nextbest_viewpoint_position[i]=candidate_viewpoint_positions[max_index][i];
-    }
 
+    // phase 2: the NBV algorithm for coverage viewpoint planning problem 
+    while(ros:ok){
+        // phase 2-step1: obtain covered octomap nodes number for candidate viewpoints
+        for (int i=0; i<candidate_viewpoints_num; i++){
 
-    // compute the inverse kinematic solutions for next best viewpoint
-    double rpy[3]={nextbest_viewpoint_position[3],nextbest_viewpoint_position[4],nextbest_viewpoint_position[5]};
-    MatrixXd rot(3,3), tran(3,1), robot_matrix(4,4);
-    rot=RPYtoRotMatrix(rpy);
-    tran<<nextbest_viewpoint_position[0], nextbest_viewpoint_position[1], nextbest_viewpoint_position[2];
-    robot_matrix<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
-                  rot(1,0),rot(1,1),rot(1,2),tran(1,0),
-                  rot(2,0),rot(2,1),rot(2,2),tran(2,0),
-                  0,0,0,1;
-    bool inverse_solution_flag;
-    MatrixXd q_mat;
-    VectorXd aubo_q(6);
-    inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
+            // phase 2-step 1.1: obtain the pose of camera viewpoint 
+            octomap::Pointcloud variablePointwall;     
+            octomap::point3d iterator; 
+            iterator.x()=candidate_viewpoint_positions[i][0]+manipulatorbase_position[0];        
+            iterator.y()=candidate_viewpoint_positions[i][1]+manipulatorbase_position[1];    
+            iterator.z()=candidate_viewpoint_positions[i][2]+manipulatorbase_position[2];    
+            
+            float roll, pitch, yaw;
+            roll=candidate_viewpoint_positions[i][3]+manipulatorbase_position[3];  
+            pitch=candidate_viewpoint_positions[i][4]+manipulatorbase_position[4];  
+            yaw=candidate_viewpoint_positions[i][5]+manipulatorbase_position[5];  
 
-    float pub_joints[6];
-    bool judge_self_collision_flag;
+            octomath::Vector3 Translation2(iterator.x(),iterator.y(),iterator.z());		
+            octomath::Quaternion Rotation2(roll,pitch,yaw);	
+            octomath::Pose6D RotandTrans2(Translation2,Rotation2);	
+            variablePointwall=pointwall;		
+            variablePointwall.transform(RotandTrans2);
 
-    if (inverse_solution_flag==true){
-        for (int i=0;i<int(q_mat.size()/6);i++){
-            aubo_q<<q_mat(0,i),q_mat(1,i),q_mat(2,i),q_mat(3,i),q_mat(4,i),q_mat(5,i);
-            cout<<"aubo q is:"<<aubo_q<<endl;
-            for (size_t j=0; j<6;j++){
-                pub_joints[j]=aubo_q(j);
-            }
-            while (ros::ok()) {
-                if ((pub_joints[0]==sub_joints[0])&&(pub_joints[1]==sub_joints[1])&&(pub_joints[2]==sub_joints[2])&&(pub_joints[3]==sub_joints[3])&&(pub_joints[4]==sub_joints[4])&&(pub_joints[5]==sub_joints[5])){
-                    ros::param::get("/judge_self_collision_flag", judge_self_collision_flag);
-                        if (judge_self_collision_flag==0){
-                            cout<<"no collision"<<endl;
-                        }
-                        else{
-                            cout<<"collision"<<endl;
-                        }
-                        break;
-                }
-                else{
-                    for (int time=0;time<20;time++){
-                    joint_state.header.stamp = ros::Time::now();
-                    joint_state.position[0] = 0.0;
-                    joint_state.position[1] = 0.0;
-                    joint_state.position[2] = 0.0;
-                    joint_state.position[3] = 0.0;
-                    
-                    joint_state.position[4] = pub_joints[0];
-                    joint_state.position[5] = pub_joints[1];
-                    joint_state.position[6] = pub_joints[2];
-                    joint_state.position[7] = pub_joints[3];
-                    joint_state.position[8] = pub_joints[4];
-                    joint_state.position[9] = pub_joints[5];
-
-                    joint_pub.publish(joint_state);
-                    loop_rate.sleep();  
-                    ros::spinOnce();  
+            // phase 2-step 1.2: raycast to obtain voxel from the camera viewpoint pose
+            octomap::KeyRay rayBeam;
+            int unknownVoxelsInRay=0;
+            int known_points_projection=0;
+            for (int ii=0; ii<variablePointwall.size();ii++){
+                bool Continue=true;		
+                cloudAndUnknown.computeRayKeys(iterator,variablePointwall.getPoint(ii),rayBeam);
+                for(octomap::KeyRay::iterator it=rayBeam.begin(); it!=rayBeam.end() && Continue; it++){
+                    octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
+                    if(node!=NULL){
+                        cloudAndUnknown.updateNode(*it, false);
+                        Continue=false;
                     }
-                }     
+                }
+            }
+            cloudAndUnknown.updateInnerOccupancy();
+
+            // phase 2-step 1.3: obtian covered voxel numbers for candidate camera viewpoint poses 
+            octomap::point3d iterator1; 
+            int uncoverage_points_num=0;
+            
+            for (size_t i = 0; i < cloud.points.size (); ++i){ 
+                iterator1.x()=cloud.points[i].x+cloudCentroid[0];
+                iterator1.y()=cloud.points[i].y+cloudCentroid[1];
+                iterator1.z()=cloud.points[i].z+cloudCentroid[2];
+                octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
+                if(node1!=NULL){
+                    if (node1->getValue()==13){
+                        uncoverage_points_num++;
+                    }
+                }
+            }
+            candidateviewpoints_coveragenode_num[i]=cloud.points.size()-uncoverage_points_num;
+            std::cout<<"the uncoverage points number is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
+            std::cout<<"---------------------------------"<<std::endl;
+            // cloudAndUnknown.insertPointCloud(variablePointwall, iterator);
+
+        }
+        
+        // phase 2-step 2: selected the best viewpoint positions through the comparision of covered voxel numbers 
+        float nextbest_viewpoint_position[cartesian_freedom];
+        int max_coveragenode_num=0;
+        int max_index;
+        for (int i=0;i<candidate_viewpoints_num;i++){
+            if (candidateviewpoints_coveragenode_num[i]>=max_coveragenode_num){
+                max_index=i;
             }
         }
+        for (int i=0; i<cartesian_freedom; i++){
+            nextbest_viewpoint_position[i]=candidate_viewpoint_positions[max_index][i];
+        }
+
+
+        // phase 2-step 3: compute the inverse kinematic solutions for next best viewpoint
+        double rpy[3]={nextbest_viewpoint_position[3],nextbest_viewpoint_position[4],nextbest_viewpoint_position[5]};
+        MatrixXd rot(3,3), tran(3,1), robot_matrix(4,4);
+        rot=RPYtoRotMatrix(rpy);
+        tran<<nextbest_viewpoint_position[0], nextbest_viewpoint_position[1], nextbest_viewpoint_position[2];
+        robot_matrix<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
+                    rot(1,0),rot(1,1),rot(1,2),tran(1,0),
+                    rot(2,0),rot(2,1),rot(2,2),tran(2,0),
+                    0,0,0,1;
+        bool inverse_solution_flag;
+        MatrixXd q_mat;
+        VectorXd aubo_q(6);
+        inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
+
+        // phase 2-step4: select collision-free joint solutions for selected viewpoint position
+        float pub_joints[6];
+        bool judge_self_collision_flag;
+
+        if (inverse_solution_flag==true){
+            for (int i=0;i<int(q_mat.size()/6);i++){
+                aubo_q<<q_mat(0,i),q_mat(1,i),q_mat(2,i),q_mat(3,i),q_mat(4,i),q_mat(5,i);
+                cout<<"aubo q is:"<<aubo_q<<endl;
+                for (size_t j=0; j<6;j++){
+                    pub_joints[j]=aubo_q(j);
+                }
+                while (ros::ok()) {
+                    if ((pub_joints[0]==sub_joints[0])&&(pub_joints[1]==sub_joints[1])&&(pub_joints[2]==sub_joints[2])&&(pub_joints[3]==sub_joints[3])&&(pub_joints[4]==sub_joints[4])&&(pub_joints[5]==sub_joints[5])){
+                        ros::param::get("/judge_self_collision_flag", judge_self_collision_flag);
+                            if (judge_self_collision_flag==0){
+                                cout<<"no collision"<<endl;
+                            }
+                            else{
+                                cout<<"collision"<<endl;
+                            }
+                            break;
+                    }
+                    else{
+                        for (int time=0;time<20;time++){
+                        joint_state.header.stamp = ros::Time::now();
+                        joint_state.position[0] = 0.0;
+                        joint_state.position[1] = 0.0;
+                        joint_state.position[2] = 0.0;
+                        joint_state.position[3] = 0.0;
+                        
+                        joint_state.position[4] = pub_joints[0];
+                        joint_state.position[5] = pub_joints[1];
+                        joint_state.position[6] = pub_joints[2];
+                        joint_state.position[7] = pub_joints[3];
+                        joint_state.position[8] = pub_joints[4];
+                        joint_state.position[9] = pub_joints[5];
+
+                        joint_pub.publish(joint_state);
+                        loop_rate.sleep();  
+                        ros::spinOnce();  
+                        }
+                    }     
+                }
+            }
+        }
+        
+        // phase 2-step 5: the exit condition is shown as follows:
+
     }
 
-    // publish robot state to complete collision check
-    
+
+    // phase 3: visualize robot motion and camera coverage viewing 
     octomap_msgs::binaryMapToMsg(cloudAndUnknown, octomapMsg);
     while (ros::ok())
     {
