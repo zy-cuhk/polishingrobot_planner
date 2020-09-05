@@ -150,9 +150,15 @@ int main(int argc,char**argv)
     float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
     int candidateviewpoints_coveragenode_num[candidate_viewpoints_num];
     
+    // phase 2-step6: initialize the final output: onecellviewpoints_candidatejointsolutions_dict
+    int selected_viewpoint=0;
+    std::string str1, str2; 
+    Json::Value onecellviewpoints_candidatejointsolutions_dict;
+    Json::FastWriter fwriter;
+    Json::StyledWriter swriter;
 
     // phase 2: the NBV algorithm for coverage viewpoint planning problem 
-    while(ros:ok){
+    while(ros::ok()){
         // phase 2-step1: obtain covered octomap nodes number for candidate viewpoints
         for (int i=0; i<candidate_viewpoints_num; i++){
 
@@ -246,9 +252,13 @@ int main(int argc,char**argv)
         bool judge_self_collision_flag;
 
         if (inverse_solution_flag==true){
-            for (int i=0;i<int(q_mat.size()/6);i++){
+            int qsolution_num=int(q_mat.size()/6);
+            bool viewpoint_collision_state=1;
+            bool qsolutions_collisionstates[qsolution_num]={0};
+
+            for (int i=0;i<qsolution_num;i++){
                 aubo_q<<q_mat(0,i),q_mat(1,i),q_mat(2,i),q_mat(3,i),q_mat(4,i),q_mat(5,i);
-                cout<<"aubo q is:"<<aubo_q<<endl;
+                // cout<<"aubo q is:"<<aubo_q<<endl;
                 for (size_t j=0; j<6;j++){
                     pub_joints[j]=aubo_q(j);
                 }
@@ -256,9 +266,11 @@ int main(int argc,char**argv)
                     if ((pub_joints[0]==sub_joints[0])&&(pub_joints[1]==sub_joints[1])&&(pub_joints[2]==sub_joints[2])&&(pub_joints[3]==sub_joints[3])&&(pub_joints[4]==sub_joints[4])&&(pub_joints[5]==sub_joints[5])){
                         ros::param::get("/judge_self_collision_flag", judge_self_collision_flag);
                             if (judge_self_collision_flag==0){
+                                qsolutions_collisionstates[i]=0;
                                 cout<<"no collision"<<endl;
                             }
                             else{
+                                qsolutions_collisionstates[i]=1;
                                 cout<<"collision"<<endl;
                             }
                             break;
@@ -283,23 +295,66 @@ int main(int argc,char**argv)
                         ros::spinOnce();  
                         }
                     }     
-                }
+                }  
             }
-        }
-        
-        // phase 2-step 5: the exit condition is shown as follows:
+            // judge whether existing collision-free solutions 
+            for (int j=0;j<qsolution_num;j++){
+                viewpoint_collision_state=viewpoint_collision_state & qsolutions_collisionstates[j];
+            }
+            // output collision free solutions to the dict
+            int collisionfree_qsolution_num=0;
+            if (viewpoint_collision_state==0){
+                str1=to_string(selected_viewpoint)+"th_selected_viewpoint";
+                for (int k=0;k<qsolution_num;k++){
+                    if (qsolutions_collisionstates[k]==0){
+                        str2=to_string(collisionfree_qsolution_num)+"th_candidate_joint_solution";
+                        for (int m=0;m<6;m++){
+                            onecellviewpoints_candidatejointsolutions_dict[str1][str2][m]=pub_joints[m];
+                        }
+                        collisionfree_qsolution_num+=1;
+                    }
+                }
+                selected_viewpoint+=1;                
+            }
 
+        }
+        // phase 2-step 5: the exit condition is shown as follows:
+        if (selected_viewpoint==1){
+            break;
+        }
     }
 
+    // phase 3: select joint solutions from candidate joint solutions 
+    float aubo_q1[6];
+    for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
+        str1=to_string(i)+"th_selected_viewpoint";
+        for (int j=0; j<onecellviewpoints_candidatejointsolutions_dict[str1].size(); j++){
+            str2=to_string(j)+"th_candidate_joint_solution";
+            for (int k=0; k<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size(); k++){
+                aubo_q1[k] = onecellviewpoints_candidatejointsolutions_dict[str1][str2][k].asFloat();
+            }
+            // cout<<"length is: "<<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size()<<endl;
+            // cout<<"aubo q is: "<<aubo_q1[0]<<" "<<aubo_q1[1]<<" "<<aubo_q1[2]<<" "<<aubo_q1[3]<<" "<<aubo_q1[4]<<" "<<aubo_q1[5]<<endl;
+        }
+    }
+    std::ofstream ofs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_candidatejointsolutions_dict.json");
+    ofs << onecellviewpoints_candidatejointsolutions_dict;
+    ofs.close();
 
-    // phase 3: visualize robot motion and camera coverage viewing 
+
+
+
+
+
+
+    // phase 4: visualize robot motion and camera coverage viewing 
     octomap_msgs::binaryMapToMsg(cloudAndUnknown, octomapMsg);
     while (ros::ok())
     {
         octomapPublisher.publish(octomapMsg);
         pcl_pub.publish(output);  
         loop_rate.sleep();  
-        //ros::spinOnce();  
+        ros::spinOnce();  
     }
 
 
