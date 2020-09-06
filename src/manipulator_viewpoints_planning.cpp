@@ -107,24 +107,21 @@ int main(int argc,char**argv)
         cloud.points[i].z=(0.0)+(iii*0.03574);
     }
 
-    // phase 1-step2: create octree from point cloud of covered wall workspace 
+    // phase 1-step2: create octree from point cloud of covered wall workspace
     float cloudCentroid[3]={0,0,0};
-    octomap::OcTree cloudAndUnknown(0.01);
+    octomap::OcTree cloudAndUnknown(0.01), cloudAndUnknown1(0.01), cloudAndUnknown2(0.01);
     for (size_t i = 0; i < cloud.points.size (); ++i){ 
         octomap::OcTreeNode * cloudNode=cloudAndUnknown.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],true);
         cloudNode->setValue(1);
+
+        octomap::OcTreeNode * cloudNode1=cloudAndUnknown1.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],true);
+        cloudNode1->setValue(1);
+
+        octomap::OcTreeNode * cloudNode2=cloudAndUnknown2.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],true);
+        cloudNode2->setValue(1);
     }
 
-    // phase 1-step3: visualize octree of covered wall workspace
-    octomap::Pointcloud scan;
-    octomap::OcTree tree(0.05);
-    octomap::point3d sensorOrigin(0,0,0);
-    for (size_t i =0; i < cloud.points.size (); ++i){
-        scan.push_back(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2]);
-    }
-    tree.insertPointCloud(scan, sensorOrigin);
-
-    // phase 1-step4: create octree of camera FOV 
+    // phase 1-step3: create octree of camera FOV 
     octomap::point3d Point3dwall(0.0,0.0,1.20);    
     octomap::Pointcloud pointwall;     
     for(int ii=1;ii<283;ii++){
@@ -135,33 +132,36 @@ int main(int argc,char**argv)
         }
     }
 
-    // phase 1-step5: sample candidate camera viewpoint positions 
+
+    // phase 1-step4: sample candidate camera viewpoint positions 
     int candidate_viewpoints_num = 1;
     int cartesian_freedom = 6;
-    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom];
+    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom], candidate_viewpoint_flag[candidate_viewpoints_num];
     for (int i=0; i<candidate_viewpoints_num; i++){
-        candidate_viewpoint_positions[i][0]=0.0;
-        candidate_viewpoint_positions[i][1]=0.2;
-        candidate_viewpoint_positions[i][2]=0.8;
+        candidate_viewpoint_positions[i][0]=-0.2;
+        candidate_viewpoint_positions[i][1]=0.2*i;
+        candidate_viewpoint_positions[i][2]=-0.2; //1.25;
         candidate_viewpoint_positions[i][3]=0.0;
         candidate_viewpoint_positions[i][4]=M_PI/2; 
         candidate_viewpoint_positions[i][5]=0.0;
+        candidate_viewpoint_flag[i]=1;
     }
     float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
     int candidateviewpoints_coveragenode_num[candidate_viewpoints_num];
     
-    // phase 2-step6: initialize the final output: onecellviewpoints_candidatejointsolutions_dict
+    // phase 1-step5: initialize the final output: onecellviewpoints_candidatejointsolutions_dict
     int selected_viewpoint=0;
     std::string str1, str2; 
     Json::Value onecellviewpoints_candidatejointsolutions_dict;
-    Json::FastWriter fwriter;
+    Json::Value onecellviewpoints_position_dict;
     Json::StyledWriter swriter;
 
+
+    //-----------------------------------------------------------------------------------------------------------------------------------
     // phase 2: the NBV algorithm for coverage viewpoint planning problem 
     while(ros::ok()){
-        // phase 2-step1: obtain covered octomap nodes number for candidate viewpoints
+        // phase 2-step1: obtain covered octomap nodes number for candidate viewpoints using octree cloudAndUnknown
         for (int i=0; i<candidate_viewpoints_num; i++){
-
             // phase 2-step 1.1: obtain the pose of camera viewpoint 
             octomap::Pointcloud variablePointwall;     
             octomap::point3d iterator; 
@@ -186,58 +186,73 @@ int main(int argc,char**argv)
             int known_points_projection=0;
             for (int ii=0; ii<variablePointwall.size();ii++){
                 bool Continue=true;		
-                cloudAndUnknown.computeRayKeys(iterator,variablePointwall.getPoint(ii),rayBeam);
+                cloudAndUnknown1.computeRayKeys(iterator,variablePointwall.getPoint(ii),rayBeam);
                 for(octomap::KeyRay::iterator it=rayBeam.begin(); it!=rayBeam.end() && Continue; it++){
-                    octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
+                    octomap::OcTreeNode * node=cloudAndUnknown1.search(*it);	
                     if(node!=NULL){
-                        cloudAndUnknown.updateNode(*it, false);
+                        cloudAndUnknown1.updateNode(*it, false);
                         Continue=false;
                     }
                 }
             }
-            cloudAndUnknown.updateInnerOccupancy();
+            cloudAndUnknown1.updateInnerOccupancy();
 
             // phase 2-step 1.3: obtian covered voxel numbers for candidate camera viewpoint poses 
-            octomap::point3d iterator1; 
             int uncoverage_points_num=0;
             
             for (size_t i = 0; i < cloud.points.size (); ++i){ 
+                octomap::point3d iterator1; 
                 iterator1.x()=cloud.points[i].x+cloudCentroid[0];
                 iterator1.y()=cloud.points[i].y+cloudCentroid[1];
                 iterator1.z()=cloud.points[i].z+cloudCentroid[2];
-                octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
+                octomap::OcTreeNode * node1=cloudAndUnknown1.search(iterator1);	
                 if(node1!=NULL){
-                    if (node1->getValue()==13){
+                    if (node1->getValue()==1){
                         uncoverage_points_num++;
                     }
                 }
             }
             candidateviewpoints_coveragenode_num[i]=cloud.points.size()-uncoverage_points_num;
-            std::cout<<"the uncoverage points number is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
+            std::cout<<"the coverage points number for candidate viewpoint is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
             std::cout<<"---------------------------------"<<std::endl;
             // cloudAndUnknown.insertPointCloud(variablePointwall, iterator);
 
+            // phase 2-step 1.4: reset octree cloudAndUnknown1 from cloudAndUnknown for each loop
+            for (size_t i = 0; i < cloud.points.size (); ++i){ 
+                octomap::point3d iterator1; 
+                iterator1.x()=cloud.points[i].x+cloudCentroid[0];
+                iterator1.y()=cloud.points[i].y+cloudCentroid[1];
+                iterator1.z()=cloud.points[i].z+cloudCentroid[2];
+                octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
+                if (node1->getValue()==1){
+                    octomap::OcTreeNode * cloudNode=cloudAndUnknown1.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],true);
+                    cloudNode->setValue(1);
+                }
+                else{
+                    octomap::OcTreeNode * cloudNode=cloudAndUnknown1.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],false);
+                }
+            }
+            
         }
-        
         // phase 2-step 2: selected the best viewpoint positions through the comparision of covered voxel numbers 
-        float nextbest_viewpoint_position[cartesian_freedom];
+        float possible_nextbest_viewpoint_position[cartesian_freedom];
         int max_coveragenode_num=0;
         int max_index;
         for (int i=0;i<candidate_viewpoints_num;i++){
-            if (candidateviewpoints_coveragenode_num[i]>=max_coveragenode_num){
+            if ((candidate_viewpoint_flag[i]!=0)&&(candidateviewpoints_coveragenode_num[i]>=max_coveragenode_num)){
                 max_index=i;
             }
         }
         for (int i=0; i<cartesian_freedom; i++){
-            nextbest_viewpoint_position[i]=candidate_viewpoint_positions[max_index][i];
+            possible_nextbest_viewpoint_position[i]=candidate_viewpoint_positions[max_index][i];
         }
 
 
         // phase 2-step 3: compute the inverse kinematic solutions for next best viewpoint
-        double rpy[3]={nextbest_viewpoint_position[3],nextbest_viewpoint_position[4],nextbest_viewpoint_position[5]};
+        double rpy[3]={possible_nextbest_viewpoint_position[3],possible_nextbest_viewpoint_position[4],possible_nextbest_viewpoint_position[5]};
         MatrixXd rot(3,3), tran(3,1), robot_matrix(4,4);
         rot=RPYtoRotMatrix(rpy);
-        tran<<nextbest_viewpoint_position[0], nextbest_viewpoint_position[1], nextbest_viewpoint_position[2];
+        tran<<possible_nextbest_viewpoint_position[0], possible_nextbest_viewpoint_position[1], possible_nextbest_viewpoint_position[2];
         robot_matrix<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
                     rot(1,0),rot(1,1),rot(1,2),tran(1,0),
                     rot(2,0),rot(2,1),rot(2,2),tran(2,0),
@@ -246,7 +261,6 @@ int main(int argc,char**argv)
         MatrixXd q_mat;
         VectorXd aubo_q(6);
         inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
-
         // phase 2-step4: select collision-free joint solutions for selected viewpoint position
         float pub_joints[6];
         bool judge_self_collision_flag;
@@ -267,11 +281,15 @@ int main(int argc,char**argv)
                         ros::param::get("/judge_self_collision_flag", judge_self_collision_flag);
                             if (judge_self_collision_flag==0){
                                 qsolutions_collisionstates[i]=0;
+                                cout<<"aubo qlist: "<<pub_joints[0]<<" "<<pub_joints[1]<<" "<<pub_joints[2]<<" "<<pub_joints[3]<<" "<<pub_joints[4]<<" "<<pub_joints[5]<<endl;
                                 cout<<"no collision"<<endl;
+                                cout<<"--------------------------------------------------";
                             }
                             else{
                                 qsolutions_collisionstates[i]=1;
+                                cout<<"aubo qlist: "<<pub_joints[0]<<" "<<pub_joints[1]<<" "<<pub_joints[2]<<" "<<pub_joints[3]<<" "<<pub_joints[4]<<" "<<pub_joints[5]<<endl;
                                 cout<<"collision"<<endl;
+                                cout<<"--------------------------------------------------";
                             }
                             break;
                     }
@@ -306,6 +324,10 @@ int main(int argc,char**argv)
             if (viewpoint_collision_state==0){
                 str1=to_string(selected_viewpoint)+"th_selected_viewpoint";
                 for (int k=0;k<qsolution_num;k++){
+                    aubo_q<<q_mat(0,k),q_mat(1,k),q_mat(2,k),q_mat(3,k),q_mat(4,k),q_mat(5,k);
+                    for (size_t j=0; j<6;j++){
+                        pub_joints[j]=aubo_q(j);
+                    }
                     if (qsolutions_collisionstates[k]==0){
                         str2=to_string(collisionfree_qsolution_num)+"th_candidate_joint_solution";
                         for (int m=0;m<6;m++){
@@ -314,16 +336,82 @@ int main(int argc,char**argv)
                         collisionfree_qsolution_num+=1;
                     }
                 }
-                selected_viewpoint+=1;                
             }
 
+            // output collision free cartesian-space solution to the list
+            if (viewpoint_collision_state==0){
+                std::string str3=to_string(selected_viewpoint)+"th_selected_viewpointposition";
+                for (int i=0; i<6; i++){
+                    onecellviewpoints_position_dict[str3][i]=possible_nextbest_viewpoint_position[i];
+                }
+                // change the coverage state of octree for wall cloud points 
+                octomap::Pointcloud variablePointwall;     
+                octomap::point3d iterator; 
+                iterator.x()=possible_nextbest_viewpoint_position[0]+manipulatorbase_position[0];        
+                iterator.y()=possible_nextbest_viewpoint_position[1]+manipulatorbase_position[1];    
+                iterator.z()=possible_nextbest_viewpoint_position[2]+manipulatorbase_position[2];    
+                
+                float roll, pitch, yaw;
+                roll=possible_nextbest_viewpoint_position[3]+manipulatorbase_position[3];  
+                pitch=possible_nextbest_viewpoint_position[4]+manipulatorbase_position[4];  
+                yaw=possible_nextbest_viewpoint_position[5]+manipulatorbase_position[5];  
+
+                octomath::Vector3 Translation2(iterator.x(),iterator.y(),iterator.z());		
+                octomath::Quaternion Rotation2(roll,pitch,yaw);	
+                octomath::Pose6D RotandTrans2(Translation2,Rotation2);	
+                variablePointwall=pointwall;		
+                variablePointwall.transform(RotandTrans2);
+
+                octomap::KeyRay rayBeam;
+                int unknownVoxelsInRay=0;
+                int known_points_projection=0;
+                for (int ii=0; ii<variablePointwall.size();ii++){
+                    bool Continue=true;		
+                    cloudAndUnknown.computeRayKeys(iterator,variablePointwall.getPoint(ii),rayBeam);
+                    for(octomap::KeyRay::iterator it=rayBeam.begin(); it!=rayBeam.end() && Continue; it++){
+                        octomap::OcTreeNode * node=cloudAndUnknown.search(*it);	
+                        if(node!=NULL){
+                            cloudAndUnknown.updateNode(*it, false);
+                            Continue=false;
+                        }
+                    }
+                }
+                cloudAndUnknown.updateInnerOccupancy();
+
+                // copy operation for octree cloudAndUnknown1 from cloudAndUnknown
+                int real_covered_num=0;
+                for (size_t i = 0; i < cloud.points.size (); ++i){ 
+                    octomap::point3d iterator1; 
+                    iterator1.x()=cloud.points[i].x+cloudCentroid[0];
+                    iterator1.y()=cloud.points[i].y+cloudCentroid[1];
+                    iterator1.z()=cloud.points[i].z+cloudCentroid[2];
+                    octomap::OcTreeNode * node1=cloudAndUnknown.search(iterator1);	
+                    if (node1->getValue()==1){
+                            octomap::OcTreeNode * cloudNode=cloudAndUnknown1.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],true);
+                            cloudNode->setValue(1);
+                        }
+                    else{
+                        octomap::OcTreeNode * cloudNode=cloudAndUnknown1.updateNode(cloud.points[i].x+cloudCentroid[0],cloud.points[i].y+cloudCentroid[1],cloud.points[i].z+cloudCentroid[2],false);
+                        real_covered_num+=1;
+                    }
+                }
+                cout<<"the viewpoint position is:"<<possible_nextbest_viewpoint_position[0]<<" "<<possible_nextbest_viewpoint_position[1]<<" "<<possible_nextbest_viewpoint_position[2]<<" "<<possible_nextbest_viewpoint_position[3]<<" "<<possible_nextbest_viewpoint_position[4]<<" "<<possible_nextbest_viewpoint_position[5]<<endl;
+                cout<<"the total_covered_num is: "<<cloud.points.size ()<<endl;
+                cout<<"real_covered_num for effective viewpoint is: "<<real_covered_num<<endl;
+                // delete the chosed viewpoint from cnadidate viewpoint list
+                candidate_viewpoint_flag[max_index]=0;
+                selected_viewpoint+=1;
+            }
         }
+        cout<<"the candidate viewpoint flag is: "<<candidate_viewpoint_flag[0]<<endl; //<<" "<<candidate_viewpoint_flag[1]<<endl;
         // phase 2-step 5: the exit condition is shown as follows:
         if (selected_viewpoint==1){
             break;
         }
     }
 
+
+    //--------------------------------------------------------------------------------------------------------------------------------------------
     // phase 3: select joint solutions from candidate joint solutions 
     float aubo_q1[6];
     for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
@@ -333,10 +421,19 @@ int main(int argc,char**argv)
             for (int k=0; k<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size(); k++){
                 aubo_q1[k] = onecellviewpoints_candidatejointsolutions_dict[str1][str2][k].asFloat();
             }
-            // cout<<"length is: "<<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size()<<endl;
             // cout<<"aubo q is: "<<aubo_q1[0]<<" "<<aubo_q1[1]<<" "<<aubo_q1[2]<<" "<<aubo_q1[3]<<" "<<aubo_q1[4]<<" "<<aubo_q1[5]<<endl;
         }
     }
+
+    float aubo_viewposition[6];
+    for (int i=0;i<onecellviewpoints_position_dict.size();i++){
+        std::string str3=to_string(i)+"th_selected_viewpointposition";
+        for (int j=0;j<6;j++){
+            aubo_viewposition[j]=onecellviewpoints_position_dict[str3][j].asFloat();
+        }
+        // cout<<"aubo position is: "<<aubo_viewposition[0]<<" "<<aubo_viewposition[1]<<" "<<aubo_viewposition[2]<<" "<<aubo_viewposition[3]<<" "<<aubo_viewposition[4]<<" "<<aubo_viewposition[5]<<endl;
+    }
+
     std::ofstream ofs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_candidatejointsolutions_dict.json");
     ofs << onecellviewpoints_candidatejointsolutions_dict;
     ofs.close();
@@ -345,20 +442,35 @@ int main(int argc,char**argv)
 
 
 
-
-
+    //--------------------------------------------------------------------------------------------------------------------------------------
     // phase 4: visualize robot motion and camera coverage viewing 
+    ros::Rate loop_rate1(2);
     octomap_msgs::binaryMapToMsg(cloudAndUnknown, octomapMsg);
     while (ros::ok())
     {
         octomapPublisher.publish(octomapMsg);
         pcl_pub.publish(output);  
-        loop_rate.sleep();  
-        ros::spinOnce();  
+
+        for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
+            str1=to_string(i)+"th_selected_viewpoint";
+            for (int j=0; j<onecellviewpoints_candidatejointsolutions_dict[str1].size(); j++){
+                joint_state.header.stamp = ros::Time::now();
+                joint_state.position[0] = 0.0;
+                joint_state.position[1] = 0.0;
+                joint_state.position[2] = 0.0;
+                joint_state.position[3] = 0.0;
+
+                str2=to_string(j)+"th_candidate_joint_solution";
+                for (int k=0; k<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size(); k++){
+                    joint_state.position[4+k] = onecellviewpoints_candidatejointsolutions_dict[str1][str2][k].asFloat();
+                }
+                joint_pub.publish(joint_state);
+                loop_rate1.sleep();  
+                ros::spinOnce();  
+            }
+        }
+
     }
-
-
-
 
     return 0;
 

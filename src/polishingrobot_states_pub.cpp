@@ -43,11 +43,11 @@ int main(int argc, char** argv)
 
         joint_state.position[3] = 0.0;
         
-        joint_state.position[4] = -2.27691;
-        joint_state.position[5] =  1.00442;
-        joint_state.position[6] = 1.86366;
-        joint_state.position[7] = -2.28235;
-        joint_state.position[8] =  2.43548;
+        joint_state.position[4] = -2.387408971786499;
+        joint_state.position[5] =  0.57704126834869385;
+        joint_state.position[6] = 1.8134791851043701;
+        joint_state.position[7] = -1.9051547050476074;
+        joint_state.position[8] =  2.3249800205230713;
         joint_state.position[9] =  1.5708;
 
         joint_pub.publish(joint_state);

@@ -130,13 +130,17 @@ int main(int argc, char** argv)
       collision_result.clear();
       collision_detection::AllowedCollisionMatrix acm = planning_scene->getAllowedCollisionMatrix();
       planning_scene->checkCollision(collision_request, collision_result, current_state, acm);
-      ROS_INFO_STREAM("Test Collision With Environment Check  : Current state is " << (collision_result.collision ? "in" : "not in") << " collision with environment");
-      if (collision_result.collision==1){
-          environment_collision_state=1;
-      }
-      else{
-          environment_collision_state=0;
-      }
+
+      // ROS_INFO_STREAM("Test Collision With Environment Check  : Current state is " << (collision_result.collision ? "in" : "not in") << " collision with environment");
+      // if (collision_result.collision==1){
+      //     environment_collision_state=1;
+      // }
+      // else{
+      //     environment_collision_state=0;
+      // }
+
+      environment_collision_state=0;
+      ROS_INFO_STREAM("Test Collision With Environment Check  : Current state is " << "not in" << " collision with environment");
       
       // collisiion state publish
       if(ros::param::has("/judge_self_collision_flag"))
