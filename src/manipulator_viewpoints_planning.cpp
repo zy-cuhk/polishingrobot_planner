@@ -134,18 +134,24 @@ int main(int argc,char**argv)
 
 
     // phase 1-step4: sample candidate camera viewpoint positions 
-    int candidate_viewpoints_num = 1;
+    int candidate_viewpoints_num = 8;
     int cartesian_freedom = 6;
-    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom], candidate_viewpoint_flag[candidate_viewpoints_num];
+    float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom]=
+    {
+        {-0.2,   0.35,  0.2,  0.0, M_PI/2, 0.0},
+        {-0.2,  -0.35,  0.2,  0.0, M_PI/2, 0.0},
+        { 0.2,  0.2, -0.4,  0.0, 3*M_PI/4, 0.0},
+        { 0.2, -0.2, -0.4,  0.0, 3*M_PI/4, 0.0},
+        { 0.2,  0.3,  0.3,  0.0, 3*M_PI/4, 0.0},
+        { 0.2, -0.3,  0.3,  0.0, 3*M_PI/4, 0.0},
+        {-0.2,  0.0,  0.7,  0.0,  M_PI/2,  0.0},
+        {-0.2,  0.0,  1.25, 0.0,  M_PI/2,  0.0},
+    }; 
+    float candidate_viewpoint_flag[candidate_viewpoints_num];
     for (int i=0; i<candidate_viewpoints_num; i++){
-        candidate_viewpoint_positions[i][0]=-0.2;
-        candidate_viewpoint_positions[i][1]=0.2*i;
-        candidate_viewpoint_positions[i][2]=-0.2; //1.25;
-        candidate_viewpoint_positions[i][3]=0.0;
-        candidate_viewpoint_positions[i][4]=M_PI/2; 
-        candidate_viewpoint_positions[i][5]=0.0;
         candidate_viewpoint_flag[i]=1;
     }
+
     float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
     int candidateviewpoints_coveragenode_num[candidate_viewpoints_num];
     
@@ -155,6 +161,7 @@ int main(int argc,char**argv)
     Json::Value onecellviewpoints_candidatejointsolutions_dict;
     Json::Value onecellviewpoints_position_dict;
     Json::StyledWriter swriter;
+
 
 
     //-----------------------------------------------------------------------------------------------------------------------------------
@@ -213,8 +220,8 @@ int main(int argc,char**argv)
                 }
             }
             candidateviewpoints_coveragenode_num[i]=cloud.points.size()-uncoverage_points_num;
+            cout<<"the index of candidate viewpoint is: "<<i<<endl;
             std::cout<<"the coverage points number for candidate viewpoint is: "<< candidateviewpoints_coveragenode_num[i]<<std::endl;
-            std::cout<<"---------------------------------"<<std::endl;
             // cloudAndUnknown.insertPointCloud(variablePointwall, iterator);
 
             // phase 2-step 1.4: reset octree cloudAndUnknown1 from cloudAndUnknown for each loop
@@ -239,14 +246,16 @@ int main(int argc,char**argv)
         int max_coveragenode_num=0;
         int max_index;
         for (int i=0;i<candidate_viewpoints_num;i++){
+            cout<<"the flag for candidate viewpoint is:"<<candidate_viewpoint_flag[i]<<endl;
             if ((candidate_viewpoint_flag[i]!=0)&&(candidateviewpoints_coveragenode_num[i]>=max_coveragenode_num)){
                 max_index=i;
+                max_coveragenode_num=candidateviewpoints_coveragenode_num[i];
+                cout<<"the max index is:"<<max_index<<endl;
             }
         }
         for (int i=0; i<cartesian_freedom; i++){
             possible_nextbest_viewpoint_position[i]=candidate_viewpoint_positions[max_index][i];
         }
-
 
         // phase 2-step 3: compute the inverse kinematic solutions for next best viewpoint
         double rpy[3]={possible_nextbest_viewpoint_position[3],possible_nextbest_viewpoint_position[4],possible_nextbest_viewpoint_position[5]};
@@ -281,15 +290,15 @@ int main(int argc,char**argv)
                         ros::param::get("/judge_self_collision_flag", judge_self_collision_flag);
                             if (judge_self_collision_flag==0){
                                 qsolutions_collisionstates[i]=0;
-                                cout<<"aubo qlist: "<<pub_joints[0]<<" "<<pub_joints[1]<<" "<<pub_joints[2]<<" "<<pub_joints[3]<<" "<<pub_joints[4]<<" "<<pub_joints[5]<<endl;
+                                // cout<<"aubo qlist: "<<pub_joints[0]<<" "<<pub_joints[1]<<" "<<pub_joints[2]<<" "<<pub_joints[3]<<" "<<pub_joints[4]<<" "<<pub_joints[5]<<endl;
                                 cout<<"no collision"<<endl;
-                                cout<<"--------------------------------------------------";
+                                // cout<<"--------------------------------------------------";
                             }
                             else{
                                 qsolutions_collisionstates[i]=1;
-                                cout<<"aubo qlist: "<<pub_joints[0]<<" "<<pub_joints[1]<<" "<<pub_joints[2]<<" "<<pub_joints[3]<<" "<<pub_joints[4]<<" "<<pub_joints[5]<<endl;
+                                // cout<<"aubo qlist: "<<pub_joints[0]<<" "<<pub_joints[1]<<" "<<pub_joints[2]<<" "<<pub_joints[3]<<" "<<pub_joints[4]<<" "<<pub_joints[5]<<endl;
                                 cout<<"collision"<<endl;
-                                cout<<"--------------------------------------------------";
+                                // cout<<"--------------------------------------------------";
                             }
                             break;
                     }
@@ -405,7 +414,7 @@ int main(int argc,char**argv)
         }
         cout<<"the candidate viewpoint flag is: "<<candidate_viewpoint_flag[0]<<endl; //<<" "<<candidate_viewpoint_flag[1]<<endl;
         // phase 2-step 5: the exit condition is shown as follows:
-        if (selected_viewpoint==1){
+        if (selected_viewpoint==candidate_viewpoints_num){
             break;
         }
     }
@@ -413,6 +422,7 @@ int main(int argc,char**argv)
 
     //--------------------------------------------------------------------------------------------------------------------------------------------
     // phase 3: select joint solutions from candidate joint solutions 
+    // phase 3-step1 : save candidate joint solutions of viewpoint positions into onecellviewpoints_candidatejointsolutions_dict
     float aubo_q1[6];
     for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
         str1=to_string(i)+"th_selected_viewpoint";
@@ -424,7 +434,11 @@ int main(int argc,char**argv)
             // cout<<"aubo q is: "<<aubo_q1[0]<<" "<<aubo_q1[1]<<" "<<aubo_q1[2]<<" "<<aubo_q1[3]<<" "<<aubo_q1[4]<<" "<<aubo_q1[5]<<endl;
         }
     }
+    std::ofstream ofs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_candidatejointsolutions_dict.json");
+    ofs << onecellviewpoints_candidatejointsolutions_dict;
+    ofs.close();
 
+    // phase 3-step2 : save cartesian-space positions of viewpoint into onecellviewpoints_position_dict
     float aubo_viewposition[6];
     for (int i=0;i<onecellviewpoints_position_dict.size();i++){
         std::string str3=to_string(i)+"th_selected_viewpointposition";
@@ -433,45 +447,12 @@ int main(int argc,char**argv)
         }
         // cout<<"aubo position is: "<<aubo_viewposition[0]<<" "<<aubo_viewposition[1]<<" "<<aubo_viewposition[2]<<" "<<aubo_viewposition[3]<<" "<<aubo_viewposition[4]<<" "<<aubo_viewposition[5]<<endl;
     }
-
-    std::ofstream ofs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_candidatejointsolutions_dict.json");
-    ofs << onecellviewpoints_candidatejointsolutions_dict;
+    std::ofstream ofs1("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_position_dict.json");
+    ofs1 << onecellviewpoints_position_dict;
     ofs.close();
 
 
-
-
-
-    //--------------------------------------------------------------------------------------------------------------------------------------
-    // phase 4: visualize robot motion and camera coverage viewing 
-    ros::Rate loop_rate1(2);
-    octomap_msgs::binaryMapToMsg(cloudAndUnknown, octomapMsg);
-    while (ros::ok())
-    {
-        octomapPublisher.publish(octomapMsg);
-        pcl_pub.publish(output);  
-
-        for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
-            str1=to_string(i)+"th_selected_viewpoint";
-            for (int j=0; j<onecellviewpoints_candidatejointsolutions_dict[str1].size(); j++){
-                joint_state.header.stamp = ros::Time::now();
-                joint_state.position[0] = 0.0;
-                joint_state.position[1] = 0.0;
-                joint_state.position[2] = 0.0;
-                joint_state.position[3] = 0.0;
-
-                str2=to_string(j)+"th_candidate_joint_solution";
-                for (int k=0; k<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size(); k++){
-                    joint_state.position[4+k] = onecellviewpoints_candidatejointsolutions_dict[str1][str2][k].asFloat();
-                }
-                joint_pub.publish(joint_state);
-                loop_rate1.sleep();  
-                ros::spinOnce();  
-            }
-        }
-
-    }
-
+    
     return 0;
 
 }
