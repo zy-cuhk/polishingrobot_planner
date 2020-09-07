@@ -126,8 +126,8 @@ int main(int argc,char**argv)
     octomap::Pointcloud pointwall;     
     for(int ii=1;ii<283;ii++){
         for(int iii=1;iii<173;iii++){
-            Point3dwall.y()= (-0.4920)+(ii*0.003489);
-            Point3dwall.x()= (-0.3080)+(iii*0.003574);
+            Point3dwall.x()= (-0.4920)+(ii*0.003489);
+            Point3dwall.y()= (-0.3080)+(iii*0.003574);
             pointwall.push_back(Point3dwall);
         }
     }
@@ -138,14 +138,14 @@ int main(int argc,char**argv)
     int cartesian_freedom = 6;
     float candidate_viewpoint_positions[candidate_viewpoints_num][cartesian_freedom]=
     {
-        {-0.2,   0.35,  0.2,  0.0, M_PI/2, 0.0},
-        {-0.2,  -0.35,  0.2,  0.0, M_PI/2, 0.0},
-        { 0.2,  0.2, -0.4,  0.0, 3*M_PI/4, 0.0},
-        { 0.2, -0.2, -0.4,  0.0, 3*M_PI/4, 0.0},
-        { 0.2,  0.3,  0.3,  0.0, 3*M_PI/4, 0.0},
-        { 0.2, -0.3,  0.3,  0.0, 3*M_PI/4, 0.0},
-        {-0.2,  0.0,  0.7,  0.0,  M_PI/2,  0.0},
-        {-0.2,  0.0,  1.25, 0.0,  M_PI/2,  0.0},
+        {-0.2,   0.35,  0.2,  -M_PI/2, 0.0, -M_PI/2},
+        {-0.2,  -0.35,  0.2,  -M_PI/2, 0.0, -M_PI/2},
+        { 0.2,  0.3, -0.4,  3*M_PI/4, 0.0, M_PI/2},
+        { 0.2, -0.3, -0.4,  3*M_PI/4, 0.0, M_PI/2},
+        { 0.2,  0.3,  0.3,  3*M_PI/4, 0.0, M_PI/2},
+        { 0.2, -0.3,  0.3,  3*M_PI/4, 0.0, M_PI/2},
+        {-0.2,  0.0,  0.7,  M_PI/2, 0.0, M_PI/2},
+        {-0.2,  0.0,  1.25, M_PI/2, 0.0, M_PI/2},
     }; 
     float candidate_viewpoint_flag[candidate_viewpoints_num];
     for (int i=0; i<candidate_viewpoints_num; i++){
@@ -259,18 +259,32 @@ int main(int argc,char**argv)
 
         // phase 2-step 3: compute the inverse kinematic solutions for next best viewpoint
         double rpy[3]={possible_nextbest_viewpoint_position[3],possible_nextbest_viewpoint_position[4],possible_nextbest_viewpoint_position[5]};
-        MatrixXd rot(3,3), tran(3,1), robot_matrix(4,4);
+        MatrixXd rot(3,3), tran(3,1), matrix_camera2base(4,4);
         rot=RPYtoRotMatrix(rpy);
         tran<<possible_nextbest_viewpoint_position[0], possible_nextbest_viewpoint_position[1], possible_nextbest_viewpoint_position[2];
-        robot_matrix<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
+        matrix_camera2base<<rot(0,0),rot(0,1),rot(0,2),tran(0,0),
                     rot(1,0),rot(1,1),rot(1,2),tran(1,0),
                     rot(2,0),rot(2,1),rot(2,2),tran(2,0),
                     0,0,0,1;
+                    
+        MatrixXd rot_camera2endeffector(3,3), tran_camera2endeffector(3,1), rot_endeffector2camera(3,3), tran_endeffector2camera(3,1);
+        rot_camera2endeffector<<0, -1, 0, 1, 0, 0, 0, 0, 1;
+        tran_camera2endeffector<<-0.12246372, 0.0, 0.0; //-0.11459462;
+        rot_endeffector2camera=rot_camera2endeffector.transpose();
+        tran_endeffector2camera=-rot_endeffector2camera*tran_camera2endeffector;
+
+        MatrixXd matrix_endeffctor2camera(4,4), matrix_endeffctor2base(4,4);
+        matrix_endeffctor2camera<<rot_endeffector2camera(0,0),rot_endeffector2camera(0,1),rot_endeffector2camera(0,2), tran_endeffector2camera(0,0),
+                                rot_endeffector2camera(1,0),rot_endeffector2camera(1,1),rot_endeffector2camera(1,2), tran_endeffector2camera(1,0),
+                                rot_endeffector2camera(2,0),rot_endeffector2camera(2,1),rot_endeffector2camera(2,2), tran_endeffector2camera(2,0),
+                                0,0,0,1;
+
+        matrix_endeffctor2base=matrix_camera2base*matrix_endeffctor2camera;
 
         bool inverse_solution_flag;
         MatrixXd q_mat;
         VectorXd aubo_q(6);
-        inverse_solution_flag=GetInverseResult_withoutref(robot_matrix,q_mat);
+        inverse_solution_flag=GetInverseResult_withoutref(matrix_endeffctor2base,q_mat);
         // phase 2-step4: select collision-free joint solutions for selected viewpoint position
         float pub_joints[6];
         bool judge_self_collision_flag;
