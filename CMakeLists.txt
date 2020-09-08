@@ -76,6 +76,19 @@ target_link_libraries(manipulator_viewpoints_visualizing ${catkin_LIBRARIES} ${O
 add_executable(mobileplatform_planningresult_visualization src/mobileplatform_planningresult_visualization.cpp)
 target_link_libraries(mobileplatform_planningresult_visualization ${catkin_LIBRARIES} )
 
+# the moveit motion planning algorithm is shown as follows:
+add_executable(move_group_aubo_tutorial src/move_group_aubo_tutorial.cpp)
+target_link_libraries(move_group_aubo_tutorial ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(manipulator_viewpoints_trajectory_planning src/manipulator_viewpoints_trajectory_planning.cpp)
+target_link_libraries(manipulator_viewpoints_trajectory_planning ${catkin_LIBRARIES} ${Boost_LIBRARIES} jsoncpp)
+
+# the below moveit motion planning algorithm is not useful: 
+add_executable(manipulator_viewpoints_trajectory_planning1 src/manipulator_viewpoints_trajectory_planning1.cpp)
+target_link_libraries(manipulator_viewpoints_trajectory_planning1 ${catkin_LIBRARIES} ${Boost_LIBRARIES} jsoncpp)
+
+add_executable(motion_planning_aubo src/motion_planning_aubo.cpp)
+target_link_libraries(motion_planning_aubo ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 # the below cpp documents are not suitable 
 add_executable(polishingrobot_states_pub src/polishingrobot_states_pub.cpp)

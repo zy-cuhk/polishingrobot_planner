@@ -20,6 +20,9 @@ the output is:
 3. publish planned robot state, including mobile platform position and manipulator joints list
 the refrence code is: 
 
+the first joint solution of third cartesian-space viewpoint position is not suitable.
+the first joint solution of fourth cartesian-space viewpoint position is not suitable 
+
 
 
 

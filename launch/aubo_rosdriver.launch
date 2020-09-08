@@ -1,0 +1,24 @@
+<launch>
+  <group ns="renov_up_level">
+    <param name="aubo_ip" value='192.168.0.11'/>
+    <param name="aubo_default_point" value='(0.0,-0.24435,2.7524,-0.3,-1.4835,-1.57)'/>
+
+    <param name="aubo_start_point" value='(0.0,-0.24435,2.7524,-0.3,-1.4835,-1.57)'/>
+    <param name="aubo_end_point" value='(0.0,-0.24435,2.7524,-0.3,-1.4835,-1.57)' /> 
+
+    <param name="joint_maxacc_tuple" value='(2.5, 2.5, 2.5, 2.5, 2.5, 2.5)'/> 
+    <param name="joint_maxvelc_tuple" value='(1.5, 1.5, 1.5, 1.5, 1.5, 1.5)'/> 
+    <param name="ee_maxacc" value='0.2'/> 
+    <param name="ee_maxvelc" value='0.1'/>
+    <param name="blend_radius" value='0.05'/> 
+    
+    <param name="last_motion_phase_over_flag" value="0" />
+    <param name="current_motion_phase_start_flag" value="0" />
+    <param name="current_motion_phase_over_flag" value="0" />
+
+    <node pkg="painting_robot_demo" type="aubo_control_rosdriver1.py" name="aubo_control_rosdriver1" output="screen" >
+    </node>
+    <node pkg="painting_robot_demo" type="aubo_control_rosdriver2.py" name="aubo_control_rosdriver2" output="screen" >
+    </node>
+    </group>
+</launch>
