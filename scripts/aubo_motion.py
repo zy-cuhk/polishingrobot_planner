@@ -11,6 +11,7 @@ import os
 import math
 import re
 import numpy as np
+import json
 from std_msgs.msg import String,Float64,Bool
 from sensor_msgs.msg import JointState
 class Renovation_operation():
@@ -132,113 +133,18 @@ class Renovation_operation():
                     break
             rate.sleep()
 
-    def painting_gun_open_control(self):
-        self.motion_state_current2last()
-        while not rospy.is_shutdown():
-            last_motion_phase_over_flag=rospy.get_param("/renov_up_level/last_motion_phase_over_flag")
-            rospy.loginfo("%s is %s", rospy.resolve_name('last_motion_phase_over_flag'), last_motion_phase_over_flag)
-
-            if last_motion_phase_over_flag==1:
-                rospy.logerr("the motion of electric switch is open")
-                os.system('rosparam set /renov_up_level/write_electric_switch_painting_open 1')
-                rospy.sleep(0.1)
-                electric_switch_painting_open_state=rospy.get_param("/renov_up_level/write_electric_switch_painting_open")
-                "painting gun triggering condition"
-                if electric_switch_painting_open_state==1:
-                    os.system("rosparam set /renov_up_level/last_motion_phase_over_flag 0")
-                    os.system("rosparam set /renov_up_level/current_motion_phase_start_flag 1")
-                else:
-                    pass
-
-            current_motion_start_flag=rospy.get_param("/renov_up_level/current_motion_phase_start_flag")
-            if current_motion_start_flag==1:
-                os.system('rosparam set /renov_up_level/write_electric_switch_painting_open 0')
-                os.system("rosparam set /renov_up_level/current_motion_phase_start_flag 0")
-                os.system("rosparam set /renov_up_level/current_motion_phase_over_flag 1")
-                break
-            rate.sleep()            
-
-    def painting_gun_close_control(self):
-        self.motion_state_current2last()
-        while not rospy.is_shutdown():
-            last_motion_phase_over_flag=rospy.get_param("/renov_up_level/last_motion_phase_over_flag")
-            rospy.loginfo("%s is %s", rospy.resolve_name('last_motion_phase_over_flag'), last_motion_phase_over_flag)
-
-            if last_motion_phase_over_flag==1:
-                rospy.logerr("the motion of electric switch is close")
-                os.system('rosparam set /renov_up_level/write_electric_switch_painting_close 1')
-                rospy.sleep(0.1)
-                electric_switch_painting_close_state=rospy.get_param("/renov_up_level/write_electric_switch_painting_close")
-                "painting gun triggering condition"
-                if electric_switch_painting_close_state==1:
-                    os.system("rosparam set /renov_up_level/last_motion_phase_over_flag 0")
-                    os.system("rosparam set /renov_up_level/current_motion_phase_start_flag 1")
-                else:
-                    pass
-
-            current_motion_start_flag=rospy.get_param("/renov_up_level/current_motion_phase_start_flag")
-            if current_motion_start_flag==1:
-                os.system('rosparam set /renov_up_level/write_electric_switch_painting_close 0')
-                os.system("rosparam set /renov_up_level/current_motion_phase_start_flag 0")
-                os.system("rosparam set /renov_up_level/current_motion_phase_over_flag 1")
-                break
-            rate.sleep()      
 
     def aubo_motion(self,aubo_q_list,rate):
         aubo_joints=[]
         for i in range(len(aubo_q_list)):
-            aubo_joints.append(aubo_q_list["aubo_data_num_"+str(i)])
+            aubo_joints.append(aubo_q_list["waypoints_num_"+str(i)])
 
-        pubstring1="movej"+self.default_start_joints+self.group_joints_to_string(aubo_joints[0:1])
         pubstring2="movet"+self.group_joints_to_string(aubo_joints[1:len(aubo_joints)])
-        pubstring3="movej"+self.group_joints_to_string(aubo_joints[len(aubo_joints)-1:len(aubo_joints)])+self.default_end_joints
-
-        print("pubstring1=%s"%pubstring1)
         print("pubstring2=%s"%pubstring2)
-        print("pubstring3=%s"%pubstring3)
 
         count=1
-        self.manipulator_motion(pubstring1,rate,count)
-       # self.painting_gun_open_control()
-        count=count+1
         self.manipulator_motion(pubstring2,rate,count)
-        # self.painting_gun_close_control()
         count=count+1
-        self.manipulator_motion(pubstring3,rate,count)
-
-    def aubo_motion1(self, aubo_q_list, rate):
-        aubo_joints=[]
-        for i in range(len(aubo_q_list)):
-            aubo_joints.append(aubo_q_list["aubo_data_num_"+str(i)])
-
-        "motion of manipulator to start point"
-        count=1
-        pubstring1="movej"+self.default_start_joints+self.group_joints_to_string(aubo_joints[0:1])
-        print("the beginning motion pubstring1=%s"%pubstring1)
-        self.manipulator_motion(pubstring1,rate,count)
-        count=count+1
-
-        "motion of manipulator to waypoints lines"
-        for i in range(len(aubo_joints)-1):
-            if i%2==0:
-                self.painting_gun_open_control()
-                pubstring="movel"+self.group_joints_to_string(aubo_joints[i:i+1])+self.group_joints_to_string(aubo_joints[i+1:i+2])
-                print("the painting process is pubstring%s is %s"%(str(count),pubstring))
-                self.manipulator_motion(pubstring,rate,count)
-                self.painting_gun_close_control()
-                count=count+1
-            else:
-                pubstring="movel"+self.group_joints_to_string(aubo_joints[i:i+1])+self.group_joints_to_string(aubo_joints[i+1:i+2])
-                print("the non-painting process is pubstring%s is %s"%(str(count),pubstring))
-                self.manipulator_motion(pubstring,rate,count)
-                count=count+1
-
-        "motion of manipulator to end points"
-        pubstring3="movej"+self.group_joints_to_string(aubo_joints[len(aubo_joints)-1:len(aubo_joints)])+self.default_end_joints
-        print("the ending motion pubstring3=%s"%pubstring3)
-        self.manipulator_motion(pubstring3,rate,count)
-
-
 
 
 def main():
@@ -247,19 +153,18 @@ def main():
     ratet=30
     rate=rospy.Rate(ratet)
 
-    aubo_q_list={"aubo_data_num_0": [-0.28525098, -0.53203763, 1.36669062, -1.24286441, -1.85604731, 1.57079633], "aubo_data_num_1": [0.71039368, -0.53203763, 1.36669062, -1.24286441, -0.86040264, 1.5707963], "aubo_data_num_2": [0.71039368, -0.63763321, 1.4856621, -1.01829734, -0.86040264, 1.57079633], "aubo_data_num_3": [-0.28525098, -0.63763321, 1.4856621, -1.01829734, -1.85604731, 1.57079633], "aubo_data_num_4": [-0.28525098, -0.78704025, 1.5382336, -0.8163188, -1.85604731, 1.57079633], "aubo_data_num_5": [0.71039368, -0.78704025, 1.5382336, -0.8163188, -0.86040264, 1.57079633], "aubo_data_num_6": [0.71039368, -0.96986677, 1.52551268, -0.64621321, -0.86040264, 1.57079633]}
+    with open("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/scripts/moveit_planning_trajectory.json",'r') as f:
+        trajectory=json.load(f)
+    # for i in range(len(trajectory)):
+    for i in range(1):
+        str1="trajectory_num_"+str(i)
+        waypoint_list=trajectory[str1]
     # aubo_joints=[]
-    # for i in range(len(aubo_q_list)):
-    #     aubo_joints.append(aubo_q_list["aubo_data_num_"+str(i)])
-    # print(aubo_joints[0:1])
-    # print(aubo_joints[1:len(aubo_joints)-1])
-    # print(aubo_joints[len(aubo_joints)-1:len(aubo_joints)])
-    # group_joints=""
-    # for i in range(len(aubo_joints)):
-    #     group_joints+=str(tuple(aubo_joints[i]))
-    # print(group_joints)
+    # for i in range(len(waypoint_list)):
+    #     aubo_joints.append(waypoint_list["waypoints_num_"+str(i)])
+    # print("aubo joints are:",aubo_joints)
     aubo5=Renovation_operation()
-    aubo5.aubo_motion(aubo_q_list,rate)
+    aubo5.aubo_motion(waypoint_list,rate)
 
     # aubo5.manipulator_motion_simulation(aubo_q_list,rate)
     

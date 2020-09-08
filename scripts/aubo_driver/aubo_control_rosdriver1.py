@@ -93,16 +93,19 @@ class AuboRosDriver():
             self.robot.set_end_max_line_velc(0.2)
             # rospy.loginfo("self.ee_maxvelc------%s",self.ee_maxvelc)
             #set blender radius
-            self.robot.set_blend_radius(blend_radius=0.05)
+            self.robot.set_blend_radius(blend_radius=0.001)
             #add waypoints
             waypoints_num=len(tuplefloatdata)/6
             rospy.loginfo("waypoints num is:%s",str(waypoints_num))
             # for i in range(waypoints_num):movet((),(),())
             #     rospy.loginfo("movet waypoints={0}".format(tuplefloatdata[6*i:6*(i+1)]))
-            self.robot.move_joint(tuplefloatdata[0:6])
-            self.robot.remove_all_waypoint()
+            # self.robot.move_joint(tuplefloatdata[0:6])
+
+            # self.robot.remove_all_waypoint()
+
             for i in range(waypoints_num):
                 self.robot.add_waypoint(tuplefloatdata[6*i:6*(i+1)])
+            print("hello")
             flag=self.robot.move_track(RobotMoveTrackType.CARTESIAN_MOVEP)
             if flag:
                 rospy.logerr("movet command work successfully")
