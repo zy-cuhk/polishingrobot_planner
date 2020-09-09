@@ -112,36 +112,37 @@ int main(int argc,char**argv)
     octomap::Pointcloud pointwall;     
     for(int ii=1;ii<283;ii++){
         for(int iii=1;iii<173;iii++){
-            Point3dwall.x()= (-0.4920)+(ii*0.003489);
-            Point3dwall.y()= (-0.3080)+(iii*0.003574);
+            Point3dwall.y()= (-0.4920)+(ii*0.003489);
+            Point3dwall.x()= (-0.3080)+(iii*0.003574);
             pointwall.push_back(Point3dwall);
         }
     }
 
     float manipulatorbase_position[6]={0.18, 0.0, 1.196, 0.0, 0.0, 0.0};
 
-    Json::Value onecellviewpoints_candidatejointsolutions_dict, onecellviewpoints_position_dict;
+    Json::Value onecellviewpoints_candidatejointsolutions_dict, onecellviewpoints_position_dict,onecellviewpoints_onejointsolution_dict;
     Json::Reader reader;
-    std::ifstream ifs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_candidatejointsolutions_dict.json");
+    std::ifstream ifs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_selectedjointsolutions_dict.json");
     reader.parse(ifs, onecellviewpoints_candidatejointsolutions_dict);
 
     std::ifstream ifs1("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_position_dict.json");
     reader.parse(ifs1, onecellviewpoints_position_dict);
 
 
-    // float aubo_q1[6];
-    // for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
-    //     std::string str1=to_string(i)+"th_selected_viewpoint";
-    //     for (int j=0; j<onecellviewpoints_candidatejointsolutions_dict[str1].size(); j++){
-    //         std::string str2=to_string(j)+"th_candidate_joint_solution";
-    //         for (int k=0; k<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size(); k++){
-    //             aubo_q1[k] = onecellviewpoints_candidatejointsolutions_dict[str1][str2][k].asFloat()*180/M_PI;
-    //         }
-    //     }
-    // }
+    float aubo_q1[6];
+    for (int i=0; i<onecellviewpoints_candidatejointsolutions_dict.size(); i++){
+        std::string str1=to_string(i)+"th_selected_viewpoint";
+        for (int j=0; j<onecellviewpoints_candidatejointsolutions_dict[str1].size(); j++){
+            std::string str2=to_string(j)+"th_candidate_joint_solution";
+            for (int k=0; k<onecellviewpoints_candidatejointsolutions_dict[str1][str2].size(); k++){
+                aubo_q1[k] = onecellviewpoints_candidatejointsolutions_dict[str1][str2][k].asFloat()*180/M_PI;
+                onecellviewpoints_onejointsolution_dict[str1][str2][k] = aubo_q1[k];
+            }
+        }
+    }
 
-    std::ofstream ofs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_candidatejointsolutions_dict.json");
-    ofs << onecellviewpoints_candidatejointsolutions_dict;
+    std::ofstream ofs("/home/zy/catkin_ws/src/polishingrobot_ylz/polishingrobot_planner/src/onecellviewpoints_selectedjointsolutions_dict_deg.json");
+    ofs << onecellviewpoints_onejointsolution_dict;
     ofs.close();
 
     //--------------------------------------------------------------------------------------------------------------------------------------

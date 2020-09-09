@@ -59,12 +59,11 @@ include_directories(
 
 )
 
+# the useful algorithm is shown as follows
+
 add_executable(collision_detection src/moveit_collision_detection.cpp)
 target_link_libraries(collision_detection ${catkin_LIBRARIES})
 install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-
-add_executable(manipulator_viewpoints_planning src/manipulator_viewpoints_planning.cpp src/aubo_kinematics.cpp)
-target_link_libraries(manipulator_viewpoints_planning ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
 
 add_executable(manipulator_viewpoints_planning1 src/manipulator_viewpoints_planning1.cpp src/aubo_kinematics.cpp)
 target_link_libraries(manipulator_viewpoints_planning1 ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
@@ -72,16 +71,20 @@ target_link_libraries(manipulator_viewpoints_planning1 ${catkin_LIBRARIES} ${OCT
 add_executable(manipulator_viewpoints_visualizing src/manipulator_viewpoints_visualizing.cpp)
 target_link_libraries(manipulator_viewpoints_visualizing ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
 
-
 add_executable(mobileplatform_planningresult_visualization src/mobileplatform_planningresult_visualization.cpp)
 target_link_libraries(mobileplatform_planningresult_visualization ${catkin_LIBRARIES} )
 
-# the moveit motion planning algorithm is shown as follows:
-add_executable(move_group_aubo_tutorial src/move_group_aubo_tutorial.cpp)
-target_link_libraries(move_group_aubo_tutorial ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-
 add_executable(manipulator_viewpoints_trajectory_planning src/manipulator_viewpoints_trajectory_planning.cpp)
 target_link_libraries(manipulator_viewpoints_trajectory_planning ${catkin_LIBRARIES} ${Boost_LIBRARIES} jsoncpp)
+
+
+# the below cpp document is for test coverage state visualization method in RVIZ
+add_executable(occupancy_mapgrid_test src/coveragestate_visualization/occupancy_mapgrid_test.cpp)
+target_link_libraries(occupancy_mapgrid_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
+
+add_executable(gridcells_test  src/coveragestate_visualization/gridcells_test.cpp)
+add_dependencies(gridcells_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(gridcells_test ${catkin_LIBRARIES} )
 
 # the below moveit motion planning algorithm is not useful: 
 add_executable(manipulator_viewpoints_trajectory_planning1 src/useless/manipulator_viewpoints_trajectory_planning1.cpp)
@@ -90,15 +93,20 @@ target_link_libraries(manipulator_viewpoints_trajectory_planning1 ${catkin_LIBRA
 add_executable(motion_planning_aubo src/useless/motion_planning_aubo.cpp)
 target_link_libraries(motion_planning_aubo ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
-# the below cpp documents are not suitable 
-add_executable(polishingrobot_states_pub src/polishingrobot_states_pub.cpp)
+add_executable(manipulator_viewpoints_planning src/useless/manipulator_viewpoints_planning.cpp src/aubo_kinematics.cpp)
+target_link_libraries(manipulator_viewpoints_planning ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
+
+add_executable(polishingrobot_states_pub src/useless/polishingrobot_states_pub.cpp)
 target_link_libraries(polishingrobot_states_pub ${catkin_LIBRARIES} )
 
-add_executable(polishingrobot_states_sub src/polishingrobot_states_sub.cpp)
+add_executable(polishingrobot_states_sub src/useless/polishingrobot_states_sub.cpp)
 target_link_libraries(polishingrobot_states_sub ${catkin_LIBRARIES} )
 
-add_executable(polishingrobot_states_pubsub src/polishingrobot_states_pubsub.cpp)
+add_executable(polishingrobot_states_pubsub src/useless/polishingrobot_states_pubsub.cpp)
 target_link_libraries(polishingrobot_states_pubsub ${catkin_LIBRARIES} )
 
-add_executable(polishingrobot_statespub_collisiondetection src/polishingrobot_statespub_collisiondetection.cpp)
+add_executable(polishingrobot_statespub_collisiondetection src/useless/polishingrobot_statespub_collisiondetection.cpp)
 target_link_libraries(polishingrobot_statespub_collisiondetection ${catkin_LIBRARIES} )
+
+add_executable(move_group_aubo_tutorial src/useless/move_group_aubo_tutorial.cpp)
+target_link_libraries(move_group_aubo_tutorial ${catkin_LIBRARIES} ${Boost_LIBRARIES})
