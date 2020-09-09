@@ -159,12 +159,12 @@ def main():
     for i in range(1):
         str1="trajectory_num_"+str(i)
         waypoint_list=trajectory[str1]
-    # aubo_joints=[]
-    # for i in range(len(waypoint_list)):
-    #     aubo_joints.append(waypoint_list["waypoints_num_"+str(i)])
-    # print("aubo joints are:",aubo_joints)
-    aubo5=Renovation_operation()
-    aubo5.aubo_motion(waypoint_list,rate)
+    aubo_joints=[]
+    for i in range(len(waypoint_list)):
+        aubo_joints.append(waypoint_list["waypoints_num_"+str(i)])
+    print("aubo joints are:",aubo_joints)
+    # aubo5=Renovation_operation()
+    # aubo5.aubo_motion(waypoint_list,rate)
 
     # aubo5.manipulator_motion_simulation(aubo_q_list,rate)
     

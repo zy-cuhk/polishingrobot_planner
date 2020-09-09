@@ -71,20 +71,23 @@ target_link_libraries(manipulator_viewpoints_planning1 ${catkin_LIBRARIES} ${OCT
 add_executable(manipulator_viewpoints_visualizing src/manipulator_viewpoints_visualizing.cpp)
 target_link_libraries(manipulator_viewpoints_visualizing ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
 
-add_executable(mobileplatform_planningresult_visualization src/mobileplatform_planningresult_visualization.cpp)
-target_link_libraries(mobileplatform_planningresult_visualization ${catkin_LIBRARIES} )
-
 add_executable(manipulator_viewpoints_trajectory_planning src/manipulator_viewpoints_trajectory_planning.cpp)
 target_link_libraries(manipulator_viewpoints_trajectory_planning ${catkin_LIBRARIES} ${Boost_LIBRARIES} jsoncpp)
 
+add_executable(framework3d_visualizing src/framework3d_visualizing.cpp)
+target_link_libraries(framework3d_visualizing ${catkin_LIBRARIES} )
 
 # the below cpp document is for test coverage state visualization method in RVIZ
-add_executable(occupancy_mapgrid_test src/coveragestate_visualization/occupancy_mapgrid_test.cpp)
-target_link_libraries(occupancy_mapgrid_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
+add_executable(octomap_occupancymapgrid_test src/coveragestate_visualization/octomap_occupancymapgrid_test.cpp)
+target_link_libraries(octomap_occupancymapgrid_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${PCL_LIBRARIES} ${Boost_INCLUDE_DIR} jsoncpp)
 
-add_executable(gridcells_test  src/coveragestate_visualization/gridcells_test.cpp)
-add_dependencies(gridcells_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(gridcells_test ${catkin_LIBRARIES} )
+add_executable(nav_gridcells_test  src/coveragestate_visualization/nav_gridcells_test.cpp)
+add_dependencies(nav_gridcells_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(nav_gridcells_test ${catkin_LIBRARIES} )
+
+add_executable(nav_occupancygrid_test  src/coveragestate_visualization/nav_occupancygrid_test.cpp)
+add_dependencies(nav_occupancygrid_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(nav_occupancygrid_test ${catkin_LIBRARIES} )
 
 # the below moveit motion planning algorithm is not useful: 
 add_executable(manipulator_viewpoints_trajectory_planning1 src/useless/manipulator_viewpoints_trajectory_planning1.cpp)

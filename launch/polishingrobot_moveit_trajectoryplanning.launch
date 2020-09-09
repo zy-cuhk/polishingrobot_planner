@@ -1,7 +1,7 @@
 <launch>
   <!-- load collision check modular-->
   <param name="judge_planningsuccess_flag" type="int" value="0"/>
-  <node name="display_plannedpath_example" pkg="polishingrobot_planner" type="display_plannedpath_example.py" output="screen">
+  <node name="obtain_plannedpath" pkg="polishingrobot_planner" type="obtain_plannedpath.py" output="screen">
   </node>
 
 </launch>
